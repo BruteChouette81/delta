@@ -1,0 +1,47 @@
+{"entity": [
+    {"sentence": "1",
+     "tag": ["O", "O", "iot", "O", "O", "location"],
+     "patterns": ["open the light in the bathroom"]
+    },
+    {"sentence": "2",
+      "tag": ["O", "O", "iot", "O", "O", "location"],
+     "patterns": ["open the television of my room"]
+    },
+    {"sentence": "3",
+      "tag": ["iot", "O", "location","location"],
+     "patterns": ["lock the front door"]
+    },
+    {"sentence": "4",
+      "tag": ["O", "O", "iot", "O", "O", "location"],
+     "patterns": ["close the light of my bedroom"]
+    },
+    {"sentence": "5",
+      "tag": ["O", "O", "O","iot", "O", "O", "location"],
+     "patterns": ["turn off the television of the bedroom"]
+    },
+    {"sentence": "6",
+      "tag": ["iot", "O", "location", "O", "O", "location"],
+     "patterns": ["lock the door of my house"]
+    },
+    {"sentence": "7",
+      "tag": ["O", "O", "O", "iot", "O", "O", "location"],
+     "patterns": ["turn off the light of my room"]
+    },
+    {"sentence": "8",
+      "tag": ["O", "O", "O", "iot"],
+     "patterns": ["change station on television"]
+    },
+    {"sentence": "9",
+      "tag": ["O", "O", "iot", "O", "O", "location"],
+     "patterns": ["mute the television of the bathroom"]
+    },
+    {"sentence": "10",
+      "tag": ["iot", "O", "O", "location"],
+     "patterns": ["lock the smart door"]
+    },
+    {"sentence": "11",
+      "tag": ["O", "O", "O", "iot"],
+     "patterns": ["turn on the television"]
+    }
+]
+}

@@ -1,0 +1,17 @@
+{"intents": [
+        {"tag": "happy",
+         "patterns": ["oh that's cool", "I love it!", "thank you", "have a nice day", "im happy to here that", "hello !"],
+         "responses": ["Hello", "hi User", "what's up!"],
+         "context_set": ""
+        },
+        {"tag": "sad",
+          "patterns": ["oh that's sad", "im sad", "i don't like it", "i had a very bad day", "very not cool", "it's not what i said"],
+          "responses": ["ok boss", "good i'll do that", "if its what you want!"],
+          "context_set": ""
+        },
+        {"tag": "neutral",
+         "patterns": ["open the light", "turn on the television", "turn off the light", "lock the front door", "light up the house", "turn off the television"],
+         "responses": ["See you later, thanks for visiting", "Have a nice day", "Bye! Come back again soon."]
+      }
+    ]
+}

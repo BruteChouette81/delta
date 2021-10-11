@@ -1,0 +1,17 @@
+{"intents": [
+        {"tag": "greeting",
+         "patterns": ["hi", "is anyone there", "hello", "good day", "how are you", "what up"],
+         "responses": ["Hello", "hi User", "what's up!"],
+         "context_set": ""
+        },
+        {"tag": "iot",
+          "patterns": ["open the light", "turn on the television", "turn off the light", "lock the front door", "light up the house", "turn off the television"],
+          "responses": ["ok boss", "good i'll do that", "if its what you want!"],
+          "context_set": ""
+        },
+        {"tag": "goodbye",
+         "patterns": ["See you later", "good bye", "have a nice day", "bye", "bye bye", "goodbye"],
+         "responses": ["See you later, thanks for visiting", "Have a nice day", "Bye! Come back again soon."]
+      }
+    ]
+}
