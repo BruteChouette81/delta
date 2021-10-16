@@ -1,1 +1,3 @@
- my idea about some program      
+task 1:
+    two model ( emotion and speaking that merge for one output: responce)
+    TODO: add a task recognition that know what to do, make seq to seq      

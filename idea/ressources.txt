@@ -1,3 +1,5 @@
 https://link.springer.com/article/10.1007/s10994-017-5666-0 == emotion and reinforcement learning
 
 file:///C:/Users/Utilisateur/Downloads/IJAITFINALPhillips-WrenSubmission020712.pdf == artificaial intelligence and decision making
+
+https://medium.com/softmax/multi-input-seq2seq-generation-with-keras-and-talos-84d8bdec2d46 == multi input seq to seq

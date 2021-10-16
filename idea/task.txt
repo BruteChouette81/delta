@@ -1,0 +1,7 @@
+#################################
+CREATING A NATURAL LANGUAGE MODEL
+#################################
+
+put all data in one file and modify the seq to seq to be more generative
+use transformer MODEL (mask)
+use transformer dataset
