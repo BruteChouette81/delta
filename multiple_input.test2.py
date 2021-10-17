@@ -1,9 +1,9 @@
-import time
+
+from numpy.core.fromnumeric import shape
 from tensorflow.keras.layers import Dense
 from tensorflow import keras
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import LSTM
-from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.layers import concatenate
 from keras.preprocessing.text import Tokenizer
 from keras.models import load_model
@@ -13,7 +13,7 @@ from test import dataset, prediction
 from test import encoded
 import json
 # import tensorflow
-MAXLEN = 10
+MAXLEN = 16
 
 def prepare_train(data):
     index = dataset(f"data/{data}")
@@ -68,9 +68,9 @@ class model_emotion:
 
 def process_output(emotion_output, speech_output, output):
 
-    # make generative// unsupervised program with another type of learninf ( next sequence for answer and the others (action/ requirements) linear regression)
-    emotion_input = Input(shape=emotion_output.shape)
-    speech_input = Input(shape=speech_output.shape)
+    # make generative// unsupervised program with another type of learning ( next sequence for answer and the others (action/ requirements) linear regression)
+    emotion_input = Input(shape=(2,3))
+    speech_input = Input(shape=(2,3))
 
     x = Dense(16, activation="relu")(emotion_input)
     x = Dense(8, activation="relu")(x)
@@ -81,15 +81,16 @@ def process_output(emotion_output, speech_output, output):
     y = Dense(8, activation="relu")(y)
     y = Model(inputs=speech_input, outputs=y)
 
-    combined = concatenate([x.output, y.output])
+    combined = concatenate(inputs=[x.output, y.output])
 
-    decoder_lstm = LSTM(64, return_sequences=True, return_state=False)(combined)
+    decoder_lstm = LSTM(10, return_sequences=True, return_state=False)(combined)
     decoder_dense = Dense(len(output[0]), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding
     '''
     z = Dense(2, activation="relu")(combined)
-    z = Dense(len(output), activation="linear")(z)
+    z = Dense(len(output[0]), activation="softmax")(z)
     '''
     model = Model(inputs=[x.input, y.input], outputs=decoder_dense)
+    print(model.summary())
     return model
 
 
@@ -171,8 +172,12 @@ def train_super_block():
     return doc1, doc2, p_bag
 
 doc1, doc2, p_bag = train_super_block()
-print(len(p_bag[0]))
+doc1 = [doc1]
+print(doc1)
 model = process_output(doc2, doc1, p_bag)
+model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
+model.fit([doc1, doc2], p_bag,
+          epochs=5)
 
 
 '''
