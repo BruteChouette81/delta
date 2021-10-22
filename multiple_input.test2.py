@@ -1,5 +1,7 @@
 
-from numpy.core.fromnumeric import shape
+from tensorflow.python.framework.ops import disable_eager_execution
+disable_eager_execution()
+
 from tensorflow.keras.layers import Dense
 from tensorflow import keras
 from tensorflow.keras.models import Model
@@ -13,7 +15,7 @@ from test import dataset, prediction
 from test import encoded
 import json
 # import tensorflow
-MAXLEN = 16
+MAXLEN = 5
 
 def prepare_train(data):
     index = dataset(f"data/{data}")
@@ -69,8 +71,8 @@ class model_emotion:
 def process_output(emotion_output, speech_output, output):
 
     # make generative// unsupervised program with another type of learning ( next sequence for answer and the others (action/ requirements) linear regression)
-    emotion_input = Input(shape=(2,3))
-    speech_input = Input(shape=(2,3))
+    emotion_input = Input(shape=(2, 3))
+    speech_input = Input(shape=(2, 3))
 
     x = Dense(16, activation="relu")(emotion_input)
     x = Dense(8, activation="relu")(x)
@@ -82,12 +84,13 @@ def process_output(emotion_output, speech_output, output):
     y = Model(inputs=speech_input, outputs=y)
 
     combined = concatenate(inputs=[x.output, y.output])
-
-    decoder_lstm = LSTM(10, return_sequences=True, return_state=False)(combined)
-    decoder_dense = Dense(len(output[0]), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding
+    print(combined.shape)
+    
+    decoder_lstm = LSTM(10, input_shape=(2, 3), return_sequences=True, return_state=False)(combined)
+    decoder_dense = Dense(len(output[0][0]), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding
     '''
-    z = Dense(2, activation="relu")(combined)
-    z = Dense(len(output[0]), activation="softmax")(z)
+    z = Dense(16, activation="relu")(combined)
+    decoder_dense = Dense(len(output[0]), activation="softmax")(z)
     '''
     model = Model(inputs=[x.input, y.input], outputs=decoder_dense)
     print(model.summary())
@@ -154,7 +157,6 @@ def train_super_block():
         output = i["output"]
 
         emotion_output = i["emotion"]
-        print(emotion_output)
 
         speech_output = i["speech"]
 
@@ -172,12 +174,18 @@ def train_super_block():
     return doc1, doc2, p_bag
 
 doc1, doc2, p_bag = train_super_block()
-doc1 = [doc1]
+doc1 = doc1.reshape(-1, 2, 3)
 print(doc1)
+doc2 = doc2.reshape(-1, 2, 3)
+print(doc2)
+p_bag = p_bag.reshape(-1, 2, 5)
+print(p_bag)
+
 model = process_output(doc2, doc1, p_bag)
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
+model.compile(optimizer='rmsprop', loss='binary_crossentropy')
 model.fit([doc1, doc2], p_bag,
-          epochs=5)
+          epochs=5,
+          batch_size=1)
 
 
 '''
