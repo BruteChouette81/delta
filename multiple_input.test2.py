@@ -71,8 +71,8 @@ class model_emotion:
 def process_output(emotion_output, speech_output, output):
 
     # make generative// unsupervised program with another type of learning ( next sequence for answer and the others (action/ requirements) linear regression)
-    emotion_input = Input(shape=(2, 3))
-    speech_input = Input(shape=(2, 3))
+    emotion_input = Input(shape=(1, 3))
+    speech_input = Input(shape=(1, 3))
 
     x = Dense(16, activation="relu")(emotion_input)
     x = Dense(8, activation="relu")(x)
@@ -86,8 +86,8 @@ def process_output(emotion_output, speech_output, output):
     combined = concatenate(inputs=[x.output, y.output])
     print(combined.shape)
     
-    decoder_lstm = LSTM(10, input_shape=(2, 3), return_sequences=True, return_state=False)(combined)
-    decoder_dense = Dense(len(output[0][0]), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding
+    decoder_lstm = LSTM(10, input_shape=(1, 3), return_sequences=True, return_state=False)(combined)
+    decoder_dense = Dense(len(output[0][0]), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding len(vocabulary)
     '''
     z = Dense(16, activation="relu")(combined)
     decoder_dense = Dense(len(output[0]), activation="softmax")(z)
@@ -174,11 +174,11 @@ def train_super_block():
     return doc1, doc2, p_bag
 
 doc1, doc2, p_bag = train_super_block()
-doc1 = doc1.reshape(-1, 2, 3)
+doc1 = doc1.reshape(-1, 1, 3)
 print(doc1)
-doc2 = doc2.reshape(-1, 2, 3)
+doc2 = doc2.reshape(-1, 1, 3)
 print(doc2)
-p_bag = p_bag.reshape(-1, 2, 5)
+p_bag = p_bag.reshape(-1, 1, 5)
 print(p_bag)
 
 model = process_output(doc2, doc1, p_bag)
@@ -186,6 +186,21 @@ model.compile(optimizer='rmsprop', loss='binary_crossentropy')
 model.fit([doc1, doc2], p_bag,
           epochs=5,
           batch_size=1)
+
+inp = input("test: ")
+model1, model2, t1, t2 = train_normal_block()
+
+pred_1 = prediction(inp, model1, t1)
+pred_1 = list(pred_1)
+pred_1 = np.array(pred_1).reshape(-1, 1, 3)
+
+pred_2 = prediction(inp, model2, t2)
+pred_2 = list(pred_2)
+pred_2 = np.array(pred_2).reshape(-1, 1, 3)
+print(pred_2)
+
+pred = model.predict([pred_1, pred_2])
+print(pred)
 
 
 '''

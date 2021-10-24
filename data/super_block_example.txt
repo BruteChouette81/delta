@@ -1,1 +1,19 @@
 put example for super block to train on
+/n = end of sequence
+
+human: turn on the tv
+bot: ok boss /n
+
+human: hello
+bot: hi /n
+
+human: hello there
+bot: General Kenobi ? /n
+
+human: turn on lights
+bot: ok /n
+
+human: open Netflix
+bot ok /n
+
+

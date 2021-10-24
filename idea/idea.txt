@@ -4,4 +4,9 @@ task 1:
 
     use conc_ai_2 from hugging face datasets (!pip install datasets
 from datasets import load_dataset
-dataset = load_dataset('conv_ai_2') ) 
+dataset = load_dataset('conv_ai_2') )
+
+make a tag that detected if the user just want to talk and direct pass it to seq to seq (or another ai )
+make the seq to seq always take the text ( merge in one input neurone that would concatonate with a lstm or transformer) so two input neurone that concatonate
+put a better (transformer) model for speech and emotion ( capabilities (modeling and graph)) and more class to detected. the fact that there is more class will make the seq to seq better
+make a BIG vocabulary for the output of the seq to seq model
