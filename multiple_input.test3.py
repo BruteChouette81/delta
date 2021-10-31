@@ -68,11 +68,11 @@ class model_emotion:
 # output must be response
 
 
-def process_output(output):
+def process_output(output_vocab, input_vocab):
 
     # make generative// unsupervised program with another type of learning ( next sequence for answer and the others (action/ requirements) linear regression)
     feature_input = Input(shape=(1, 3))
-    text_input = Input(shape=(1, 3)) # modify shape
+    text_input = Input(shape=(None, len(input_vocab))) # modify shape
 
     x = Dense(16, activation="relu")(feature_input)
     x = Dense(8, activation="relu")(x)
@@ -83,7 +83,7 @@ def process_output(output):
     print(combined.shape)
     
     decoder_lstm = LSTM(10, return_sequences=True, return_state=False)(combined)
-    decoder_dense = Dense(len(output[0][0]), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding
+    decoder_dense = Dense(len(output_vocab), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding
     '''
     z = Dense(16, activation="relu")(combined)
     decoder_dense = Dense(len(output[0]), activation="softmax")(z)
@@ -111,6 +111,41 @@ def train_normal_block():
     model1 = load_model("../server_test/models/model1.h5")
     return model1, model2, t1, t2
 
+def output_vocab(output):
+    t = Tokenizer()
+    t.fit_on_texts(output)
+    bag = t.texts_to_sequences(doc_output)
+    p_bag = keras.preprocessing.sequence.pad_sequences(bag, maxlen=MAXLEN, padding="post")
+    vocab = []
+
+    for char in p_bag:
+        if char not in vocab:
+            vocab.append(char)
+
+    return p_bag, vocab
+
+def get_data_from_text(path):
+    file = open(f"data/{path}", "r")
+
+    string_input = 'human:'
+    string_output = 'bot:'
+
+    index = 0
+
+    line_input = []
+    line_output = []
+  
+    for line in file:  
+        index += 1
+ 
+        if string_input in line:
+          line_input.append(index)
+
+        if string_output in line:
+            line_output.append(index)
+                    
+    print('input at line: ', line_input)
+    file.close()
 
 def drop_data(path, emotion_output, speech_output, trained_output):
     data2 = {
@@ -126,21 +161,21 @@ def drop_data(path, emotion_output, speech_output, trained_output):
         json.dump(data, file, indent=4)
 
 def get_data_from_file(path):
-    with open(f"data/{path}", "r") as file:
+    with open(f"data/{path}", "r+") as file:
         data = json.load(file)
 
-    file.close
+    file.close()
     return data["intents"]
 
 def get_training_data():
     model1, model2, t1, t2 = train_normal_block()
 
     # get a list of pred the test on
-    forexample_list = ["i like soup", "turn on the tv"]
+    forexample_list = get_dataget_data_from_text("super_block_example.txt")
     for i in range(len(forexample_list)):
         pred_1 = prediction(forexample_list[i], model1, t1)
         pred_2 = prediction(forexample_list[i], model2, t2)
-        drop_data("super_block.json", list(pred_2), list(pred_1), forexample_list[i])
+        drop_data("super_block.json", list(pred_2), list(pred_1), forexample_list[i]) # change for  drop_data("super_block.json", list(pred_2), list(pred_1), forexample_list[i], output) where forexample_list is is input of lstm
 
 
 def train_super_block():
@@ -162,26 +197,26 @@ def train_super_block():
 
     doc1 = np.array(doc1)
     doc2 = np.array(doc2)
-    t = Tokenizer()
-    t.fit_on_texts(doc_output)
-    # find a way to encode doc_output (generation)
-    bag = t.texts_to_sequences(doc_output)
-    p_bag = keras.preprocessing.sequence.pad_sequences(bag, maxlen=MAXLEN, padding="post")
-    return doc1, doc2, p_bag
+    p_bag, vocab = output_vocab(doc_output)
+    
+    return doc1, doc2, p_bag, vocab
 
-doc1, doc2, p_bag = train_super_block()
+get_data_from_text("super_block_example.txt")
+'''
+doc1, doc2, p_bag, vocab = train_super_block()
 combined_doc = np.column_stack((doc1, doc2))
 combined_doc = combined_doc.reshape(-1, 1, 6)
 print(combined_doc)
 p_bag = p_bag.reshape(-1, 1, 5)
 print(p_bag)
-'''
-model = process_output(p_bag)
+
+model = process_output(vocab)
 model.compile(optimizer='rmsprop', loss='binary_crossentropy')
 model.fit([doc1, doc2], p_bag,
           epochs=5,
           batch_size=1)
 '''
+
 '''
 inp = input("test: ")
 model1, model2, t1, t2 = train_normal_block()
