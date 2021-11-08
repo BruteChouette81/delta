@@ -71,7 +71,7 @@ class model_emotion:
 def process_output(output_vocab, input_vocab):
 
     # make generative// unsupervised program with another type of learning ( next sequence for answer and the others (action/ requirements) linear regression)
-    feature_input = Input(shape=(1, 3))
+    feature_input = Input(shape=(1, 6))
     text_input = Input(shape=(None, len(input_vocab))) # modify shape
 
     x = Dense(16, activation="relu")(feature_input)
@@ -114,13 +114,14 @@ def train_normal_block():
 def output_vocab(output):
     t = Tokenizer()
     t.fit_on_texts(output)
-    bag = t.texts_to_sequences(doc_output)
+    bag = t.texts_to_sequences(output)
     p_bag = keras.preprocessing.sequence.pad_sequences(bag, maxlen=MAXLEN, padding="post")
     vocab = []
 
-    for char in p_bag:
-        if char not in vocab:
-            vocab.append(char)
+    for sample in p_bag:
+        for char in sample:
+            if char not in vocab:
+                vocab.append(char)
 
     return p_bag, vocab
 
@@ -171,7 +172,7 @@ def get_training_data():
     model1, model2, t1, t2 = train_normal_block()
 
     # get a list of pred the test on
-    forexample_list = get_dataget_data_from_text("super_block_example.txt")
+    forexample_list = get_data_from_text("super_block_example.txt")
     for i in range(len(forexample_list)):
         pred_1 = prediction(forexample_list[i], model1, t1)
         pred_2 = prediction(forexample_list[i], model2, t2)
@@ -202,14 +203,16 @@ def train_super_block():
     return doc1, doc2, p_bag, vocab
 
 get_data_from_text("super_block_example.txt")
-'''
+
 doc1, doc2, p_bag, vocab = train_super_block()
+print(vocab)
 combined_doc = np.column_stack((doc1, doc2))
 combined_doc = combined_doc.reshape(-1, 1, 6)
 print(combined_doc)
 p_bag = p_bag.reshape(-1, 1, 5)
-print(p_bag)
+print(p_bag) # we aheve to encode all data as one hot encoding and then modify the shape of the model
 
+'''
 model = process_output(vocab)
 model.compile(optimizer='rmsprop', loss='binary_crossentropy')
 model.fit([doc1, doc2], p_bag,
