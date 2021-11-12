@@ -81,9 +81,21 @@ def process_output(output_vocab, input_vocab):
     
     combined = concatenate(inputs=[x, encoder_lstm])
     print(combined.shape)
+    '''
+    encoder = LSTM(10, return_state=True)
+    
+    encoder_outputs, state_h, state_c = encoder(combined)
+
+    encoder_states = [state_h, state_c]
+
+    decoder_input = Input(shape=len(output_vocab))
+    decoder_lstm = LSTM(10, return_sequences=True, return_state=True)
+    decoder_ouput, _, _ = decoder_lstm(decoder_inputs,
+                                     initial_state=encoder_states)
+    '''
     
     decoder_lstm = LSTM(10, return_sequences=True, return_state=False)(combined)
-    decoder_dense = Dense(len(output_vocab), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding
+    decoder_dense = Dense(len(output_vocab), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding// (decoder_output)
     '''
     z = Dense(16, activation="relu")(combined)
     decoder_dense = Dense(len(output[0]), activation="softmax")(z)
@@ -111,19 +123,33 @@ def train_normal_block():
     model1 = load_model("../server_test/models/model1.h5")
     return model1, model2, t1, t2
 
-def output_vocab(output):
-    t = Tokenizer()
-    t.fit_on_texts(output)
-    bag = t.texts_to_sequences(output)
-    p_bag = keras.preprocessing.sequence.pad_sequences(bag, maxlen=MAXLEN, padding="post")
-    vocab = []
+def input_vocab(input):
 
-    for sample in p_bag:
+    input_voc = []
+    for sample in input:
+        for char in sample:
+            if char not in vocab:
+               input_voc.append(char)
+
+    return input_voc
+
+
+def output_vocab(output):
+    vocab = []
+    training = []
+    for sample in output:
         for char in sample:
             if char not in vocab:
                 vocab.append(char)
 
-    return p_bag, vocab
+    print(vocab)
+    for i in range(len(vocab)):
+        bag = [0] * len(vocab)
+
+        bag[i] = 1
+        training.append(bag)
+
+    return training, vocab
 
 def get_data_from_text(path):
     file = open(f"data/{path}", "r")
@@ -189,7 +215,6 @@ def train_super_block():
         output = i["output"]
 
         emotion_output = i["emotion"]
-
         speech_output = i["speech"]
 
         doc1.append(list(speech_output))
@@ -198,19 +223,18 @@ def train_super_block():
 
     doc1 = np.array(doc1)
     doc2 = np.array(doc2)
-    p_bag, vocab = output_vocab(doc_output)
+    training, vocab = output_vocab(doc_output)
     
-    return doc1, doc2, p_bag, vocab
+    return doc1, doc2, training, vocab
 
-get_data_from_text("super_block_example.txt")
+#get_data_from_text("super_block_example.txt")
 
-doc1, doc2, p_bag, vocab = train_super_block()
-print(vocab)
+doc1, doc2, training, vocab = train_super_block()
+print(vocab) # chift one char from the output to make input to lstm decoder and the original will be target
 combined_doc = np.column_stack((doc1, doc2))
 combined_doc = combined_doc.reshape(-1, 1, 6)
 print(combined_doc)
-p_bag = p_bag.reshape(-1, 1, 5)
-print(p_bag) # we aheve to encode all data as one hot encoding and then modify the shape of the model
+print(training) # we have to encode all data as one hot encoding and then modify the shape of the model ( num_sample, maxlen, vocab_size)
 
 '''
 model = process_output(vocab)
