@@ -32,6 +32,18 @@ def prepare_train(data):
     return x_train, y_train, t, classes
 
 
+
+
+def extract_data(line):
+    if "human:" in line:
+        text = line.replace("human:", "")
+
+    else:
+        text = line.replace("bot:", "")
+
+    return text
+
+
 class model_speech_rec:
     def __init__(self, data):
         self.data = data
@@ -123,18 +135,8 @@ def train_normal_block():
     model1 = load_model("../server_test/models/model1.h5")
     return model1, model2, t1, t2
 
-def input_vocab(input):
 
-    input_voc = []
-    for sample in input:
-        for char in sample:
-            if char not in vocab:
-               input_voc.append(char)
-
-    return input_voc
-
-
-def output_vocab(output):
+def create_vocab(output):
     vocab = []
     training = []
     for sample in output:
@@ -150,6 +152,22 @@ def output_vocab(output):
         training.append(bag)
 
     return training, vocab
+def index_vocab(vocab, training, sentence):
+    seq = []
+    for word in sentence:
+        for char in word:
+            if char in vocab:
+                ind = vocab.index(char)
+                seq.append(training[ind])
+
+            else:
+                print(f"Character {char} not in vocab.")
+
+    return seq
+
+
+
+
 
 def get_data_from_text(path):
     file = open(f"data/{path}", "r")
@@ -166,19 +184,22 @@ def get_data_from_text(path):
         index += 1
  
         if string_input in line:
-          line_input.append(index)
+          text = extract_data(line)
+          line_input.append(text)
 
         if string_output in line:
-            line_output.append(index)
+          text = extract_data(line)
+          line_output.append(text)
                     
-    print('input at line: ', line_input)
     file.close()
+    return line_input, line_output
 
-def drop_data(path, emotion_output, speech_output, trained_output):
+def drop_data(path, emotion_output, speech_output, trained_input, trained_output):
     data2 = {
         "emotion": emotion_output[0].tolist(),
         "speech": speech_output[0].tolist(),
-        "output": str(trained_output),
+        "input": str(trained_input),
+        "output": str(trained_output)
     }
     # add more data and more tags
     with open(f"data/{path}", "r+") as file:
@@ -198,11 +219,11 @@ def get_training_data():
     model1, model2, t1, t2 = train_normal_block()
 
     # get a list of pred the test on
-    forexample_list = get_data_from_text("super_block_example.txt")
-    for i in range(len(forexample_list)):
-        pred_1 = prediction(forexample_list[i], model1, t1)
-        pred_2 = prediction(forexample_list[i], model2, t2)
-        drop_data("super_block.json", list(pred_2), list(pred_1), forexample_list[i]) # change for  drop_data("super_block.json", list(pred_2), list(pred_1), forexample_list[i], output) where forexample_list is is input of lstm
+    inp, out = get_data_from_text("super_block_example.txt")
+    for i in range(len(inp)):
+        pred_1 = prediction(inp[i], model1, t1)
+        pred_2 = prediction(inp[i], model2, t2)
+        drop_data("super_block.json", list(pred_2), list(pred_1), inp[i], out[i]) # change for  drop_data("super_block.json", list(pred_2), list(pred_1), forexample_list[i], output) where forexample_list is is input of lstm
 
 
 def train_super_block():
@@ -211,8 +232,10 @@ def train_super_block():
     doc1 = []
     doc2 = []
     doc_output = []
+    doc_input = []
     for i in lol:
         output = i["output"]
+        input = i["input"]
 
         emotion_output = i["emotion"]
         speech_output = i["speech"]
@@ -220,21 +243,28 @@ def train_super_block():
         doc1.append(list(speech_output))
         doc2.append(list(emotion_output))
         doc_output.append(str(output))
+        doc_input.append(str(input))
 
     doc1 = np.array(doc1)
     doc2 = np.array(doc2)
-    training, vocab = output_vocab(doc_output)
+    out_training, out_vocab = create_vocab(doc_output) ### TODO separate the input and output in sample and pad them
+    seq = index_vocab(out_vocab, out_training, doc_output)
+    print(seq)
+    inp_training, inp_vocab = create_vocab(doc_input)
+
     
-    return doc1, doc2, training, vocab
+    return doc1, doc2, out_training, out_vocab, inp_training, inp_vocab
 
-#get_data_from_text("super_block_example.txt")
 
-doc1, doc2, training, vocab = train_super_block()
-print(vocab) # chift one char from the output to make input to lstm decoder and the original will be target
+
+doc1, doc2, out_training, out_vocab, inp_training, inp_vocab = train_super_block()
+print(f"Output ocabulary: {out_vocab}") # chift one char from the output to make input to lstm decoder and the original will be target
 combined_doc = np.column_stack((doc1, doc2))
 combined_doc = combined_doc.reshape(-1, 1, 6)
-print(combined_doc)
-print(training) # we have to encode all data as one hot encoding and then modify the shape of the model ( num_sample, maxlen, vocab_size)
+print(f"Combined feature: {combined_doc}")
+print(f"Output training data: {out_training}") # we have to encode all data as one hot encoding and then modify the shape of the model ( num_sample, maxlen, vocab_size)
+
+
 
 '''
 model = process_output(vocab)
