@@ -15,7 +15,7 @@ from test import dataset, prediction
 from test import encoded
 import json
 # import tensorflow
-MAXLEN = 5
+MAXLEN = 20
 
 def prepare_train(data):
     index = dataset(f"data/{data}")
@@ -152,6 +152,8 @@ def create_vocab(output):
         training.append(bag)
 
     return training, vocab
+
+
 def index_vocab(vocab, training, sentence):
     seq = []
     for word in sentence:
@@ -161,12 +163,18 @@ def index_vocab(vocab, training, sentence):
                 seq.append(training[ind])
 
             else:
-                print(f"Character {char} not in vocab.")
+                print(f"Error: Character {char} not in vocab.")
+                return
+    
+    if len(seq) > MAXLEN:
+        print("Error: Training sequence have a lenght bigger than the max lenght (MAXLEN) change the max lenght or cut the sequence.")
+        return
+
+    else:
+        for i in range(MAXLEN - len(seq)):
+            seq.append([0] * len(vocab))
 
     return seq
-
-
-
 
 
 def get_data_from_text(path):
@@ -247,22 +255,32 @@ def train_super_block():
 
     doc1 = np.array(doc1)
     doc2 = np.array(doc2)
-    out_training, out_vocab = create_vocab(doc_output) ### TODO separate the input and output in sample and pad them
-    seq = index_vocab(out_vocab, out_training, doc_output)
-    print(seq)
+    out_training, out_vocab = create_vocab(doc_output)
     inp_training, inp_vocab = create_vocab(doc_input)
 
-    
-    return doc1, doc2, out_training, out_vocab, inp_training, inp_vocab
+    x_out_data = []
+    x_inp_data = []
+
+    for sample in doc_output:
+        print(sample)
+        seq = index_vocab(out_vocab, out_training, sample)
+        x_out_data.append(seq)
+
+    for sample in doc_input:
+        print(sample)
+        seq = index_vocab(inp_vocab, inp_training, sample)
+        x_inp_data.append(seq)
+
+    return doc1, doc2, x_inp_data, x_out_data
 
 
 
-doc1, doc2, out_training, out_vocab, inp_training, inp_vocab = train_super_block()
-print(f"Output ocabulary: {out_vocab}") # chift one char from the output to make input to lstm decoder and the original will be target
+doc1, doc2, x_inp_data, x_out_data = train_super_block()
+# chift one char from the output to make input to lstm decoder and the original will be target
 combined_doc = np.column_stack((doc1, doc2))
 combined_doc = combined_doc.reshape(-1, 1, 6)
 print(f"Combined feature: {combined_doc}")
-print(f"Output training data: {out_training}") # we have to encode all data as one hot encoding and then modify the shape of the model ( num_sample, maxlen, vocab_size)
+### TODO modify the shape of the model ( num_sample, maxlen, vocab_size)
 
 
 
