@@ -15,7 +15,7 @@ from test import dataset, prediction
 from test import encoded
 import json
 # import tensorflow
-MAXLEN = 20
+MAXLEN = 25
 
 def prepare_train(data):
     index = dataset(f"data/{data}")
@@ -80,19 +80,18 @@ class model_emotion:
 # output must be response
 
 
-def process_output(output_vocab, input_vocab):
+def process_output(output_vocab):
 
     # make generative// unsupervised program with another type of learning ( next sequence for answer and the others (action/ requirements) linear regression)
-    feature_input = Input(shape=(1, 6))
-    text_input = Input(shape=(None, len(input_vocab))) # modify shape
+    feature_input = Input(shape=(2, 3))
+    text_input = Input(shape=(25, 18)) # modify shape (maxlen, len(vocab_input))
 
     x = Dense(16, activation="relu")(feature_input)
     x = Dense(8, activation="relu")(x)
     
-    encoder_lstm = LSTM(10, input_shape=(1, 3), return_sequences=True, return_state=False)(text_input)
+    encoder_lstm = LSTM(8, input_shape=(25, 18), return_sequences=True, return_state=False)(text_input)
     
-    combined = concatenate(inputs=[x, encoder_lstm])
-    print(combined.shape)
+    combined = concatenate(inputs=[x, encoder_lstm], axis =1)
     '''
     encoder = LSTM(10, return_state=True)
     
@@ -112,7 +111,7 @@ def process_output(output_vocab, input_vocab):
     z = Dense(16, activation="relu")(combined)
     decoder_dense = Dense(len(output[0]), activation="softmax")(z)
     '''
-    model = Model(inputs=[x.input, encoder_lstm.input], outputs=decoder_dense)
+    model = Model(inputs=[feature_input, text_input], outputs=decoder_dense)
     print(model.summary())
     return model
 
@@ -278,9 +277,15 @@ def train_super_block():
 doc1, doc2, x_inp_data, x_out_data = train_super_block()
 # chift one char from the output to make input to lstm decoder and the original will be target
 combined_doc = np.column_stack((doc1, doc2))
-combined_doc = combined_doc.reshape(-1, 1, 6)
+combined_doc = combined_doc.reshape(-1, 2, 3)
 print(f"Combined feature: {combined_doc}")
-### TODO modify the shape of the model ( num_sample, maxlen, vocab_size)
+
+x_inp_data = np.array(x_inp_data)
+x_out_data = np.array(x_out_data)
+print(f"X input data shape: {x_out_data.shape}")
+### TODO a decision making system 
+
+multi_modal = process_output(x_out_data[0][0])
 
 
 
