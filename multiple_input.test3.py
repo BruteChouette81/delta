@@ -15,7 +15,8 @@ from test import dataset, prediction
 from test import encoded
 import json
 # import tensorflow
-MAXLEN = 25
+INMAXLEN = 25
+OUTMAXLEN = 27
 
 def prepare_train(data):
     index = dataset(f"data/{data}")
@@ -91,7 +92,7 @@ def process_output(output_vocab):
     
     encoder_lstm = LSTM(8, input_shape=(25, 18), return_sequences=True, return_state=False)(text_input)
     
-    combined = concatenate(inputs=[x, encoder_lstm], axis =1)
+    combined = concatenate(inputs=[x, encoder_lstm], axis=1)
     '''
     encoder = LSTM(10, return_state=True)
     
@@ -153,7 +154,7 @@ def create_vocab(output):
     return training, vocab
 
 
-def index_vocab(vocab, training, sentence):
+def index_vocab(vocab, training, sentence, inp):
     seq = []
     for word in sentence:
         for char in word:
@@ -164,14 +165,23 @@ def index_vocab(vocab, training, sentence):
             else:
                 print(f"Error: Character {char} not in vocab.")
                 return
-    
-    if len(seq) > MAXLEN:
-        print("Error: Training sequence have a lenght bigger than the max lenght (MAXLEN) change the max lenght or cut the sequence.")
-        return
+    if inp:
+        if len(seq) > INMAXLEN:
+            print("Error: Training sequence have a lenght bigger than the max lenght (MAXLEN) change the max lenght or cut the sequence.")
+            return
 
-    else:
-        for i in range(MAXLEN - len(seq)):
-            seq.append([0] * len(vocab))
+        else:
+            for i in range(INMAXLEN - len(seq)):
+                seq.append([0] * len(vocab))
+
+    if not inp:
+        if len(seq) > OUTMAXLEN:
+            print("Error: Training sequence have a lenght bigger than the max lenght (MAXLEN) change the max lenght or cut the sequence.")
+            return
+
+        else:
+            for i in range(OUTMAXLEN - len(seq)):
+                seq.append([0] * len(vocab))
 
     return seq
 
@@ -262,12 +272,12 @@ def train_super_block():
 
     for sample in doc_output:
         print(sample)
-        seq = index_vocab(out_vocab, out_training, sample)
+        seq = index_vocab(out_vocab, out_training, sample, False)
         x_out_data.append(seq)
 
     for sample in doc_input:
         print(sample)
-        seq = index_vocab(inp_vocab, inp_training, sample)
+        seq = index_vocab(inp_vocab, inp_training, sample, True)
         x_inp_data.append(seq)
 
     return doc1, doc2, x_inp_data, x_out_data
@@ -286,8 +296,10 @@ print(f"X input data shape: {x_out_data.shape}")
 ### TODO a decision making system 
 
 multi_modal = process_output(x_out_data[0][0])
-
-
+multi_modal.compile(optimizer='adam', loss='categorical_crossentropy')
+multi_modal.fit([combined_doc, x_inp_data], x_out_data,
+          epochs=5,
+          batch_size=1)
 
 '''
 model = process_output(vocab)
