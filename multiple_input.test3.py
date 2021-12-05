@@ -1,6 +1,7 @@
 
 from tensorflow.python.framework.ops import disable_eager_execution
 disable_eager_execution()
+import tensorflow as tf
 
 from tensorflow.keras.layers import Dense
 from tensorflow import keras
@@ -88,31 +89,27 @@ def process_output(output_vocab):
     text_input = Input(shape=(25, 18)) # modify shape (maxlen, len(vocab_input))
 
     x = Dense(16, activation="relu")(feature_input)
-    x = Dense(8, activation="relu")(x)
+    x = Dense(64, activation="relu")(x)
     
-    encoder_lstm = LSTM(8, input_shape=(25, 18), return_sequences=True, return_state=False)(text_input)
+    encoder_lstm = LSTM(64, input_shape=(25, 18), return_sequences=True, return_state=False)(text_input)
     
-    combined = concatenate(inputs=[x, encoder_lstm], axis=1)
-    '''
-    encoder = LSTM(10, return_state=True)
+    combined = concatenate(inputs=[x, encoder_lstm], axis=1) #axis= 1
+
+    encoder = LSTM(64, return_state=True)
     
     encoder_outputs, state_h, state_c = encoder(combined)
 
     encoder_states = [state_h, state_c]
 
-    decoder_input = Input(shape=len(output_vocab))
-    decoder_lstm = LSTM(10, return_sequences=True, return_state=True)
-    decoder_ouput, _, _ = decoder_lstm(decoder_inputs,
+    decoder_input = Input(shape=(None, 22), name="decoder_input")
+    decoder_lstm = LSTM(64, return_sequences=True, return_state=True, name="decoder_lstm")
+    decoder_output, _, _ = decoder_lstm(decoder_input,
                                      initial_state=encoder_states)
-    '''
-    
-    decoder_lstm = LSTM(10, return_sequences=True, return_state=False)(combined)
-    decoder_dense = Dense(len(output_vocab), activation='softmax')(decoder_lstm) #output[0]  for one hot encoding// (decoder_output)
-    '''
-    z = Dense(16, activation="relu")(combined)
-    decoder_dense = Dense(len(output[0]), activation="softmax")(z)
-    '''
-    model = Model(inputs=[feature_input, text_input], outputs=decoder_dense)
+    #decoder_lstm = LSTM(10, return_sequences=True, return_state=False)(combined)
+    decoder_dense = Dense(22, activation='softmax')
+    decoder_outputs = decoder_dense(decoder_output) #output[0]  for one hot encoding// (decoder_output)
+
+    model = Model(inputs=[feature_input, text_input, decoder_input], outputs=decoder_outputs)
     print(model.summary())
     return model
 
@@ -121,14 +118,14 @@ def train_normal_block():
     # fit the two model
     
     model2, x_emotion_train, y_emotion_train, t2 = model_emotion("emotion_pattern.json").model2()
-    model2.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    #model2.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     #model2.fit(x_emotion_train, y_emotion_train, epochs=100, batch_size=2, verbose=1)
     #model2.save("../server_test/models/model2.h5")
 
     #time.sleep(10)
     
     model1, x_speech_train, y_speech_train, t1 = model_speech_rec("ir.json").model1()
-    model1.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    #model1.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     #model1.fit(x_speech_train, y_speech_train, epochs=100, batch_size=2, verbose=1)
     #model1.save("../server_test/models/model1.h5")
     model2 = load_model("../server_test/models/model2.h5")
@@ -280,48 +277,102 @@ def train_super_block():
         seq = index_vocab(inp_vocab, inp_training, sample, True)
         x_inp_data.append(seq)
 
-    return doc1, doc2, x_inp_data, x_out_data
+    return doc1, doc2, x_inp_data, x_out_data, inp_training, inp_vocab, out_vocab, out_training
 
 
 
-doc1, doc2, x_inp_data, x_out_data = train_super_block()
+doc1, doc2, x_inp_data, x_out_data, inp_training, inp_vocab, out_vocab, out_training = train_super_block()
 # chift one char from the output to make input to lstm decoder and the original will be target
 combined_doc = np.column_stack((doc1, doc2))
 combined_doc = combined_doc.reshape(-1, 2, 3)
 print(f"Combined feature: {combined_doc}")
+x_out_targ = []
+for i in x_out_data:
+    x_out_targ.append(i[1:] + [[0] * 22])
 
 x_inp_data = np.array(x_inp_data)
 x_out_data = np.array(x_out_data)
-print(f"X input data shape: {x_out_data.shape}")
+x_out_targ = np.array(x_out_targ)
+
+print(f"X input data shape: {x_out_targ.shape}")
 ### TODO a decision making system 
-
+'''
 multi_modal = process_output(x_out_data[0][0])
-multi_modal.compile(optimizer='adam', loss='categorical_crossentropy')
-multi_modal.fit([combined_doc, x_inp_data], x_out_data,
-          epochs=5,
+
+multi_modal.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=["accuracy"])
+multi_modal.fit([combined_doc, x_inp_data, x_out_data], x_out_targ,
+          epochs=100,
           batch_size=1)
 
+multi_modal.save("multimodalities")
 '''
-model = process_output(vocab)
-model.compile(optimizer='rmsprop', loss='binary_crossentropy')
-model.fit([doc1, doc2], p_bag,
-          epochs=5,
-          batch_size=1)
-'''
+multi_modal = load_model("multimodalities")
+encoder_input_1 = multi_modal.input[0]  # input_1
+encoder_input_2 = multi_modal.input[1]  # input_2
+encoder_outputs, state_h_enc, state_c_enc = multi_modal.layers[7].output  # lstm_1 [8]
+encoder_states = [state_h_enc, state_c_enc]
+encoder_model = Model([encoder_input_1, encoder_input_2], encoder_states)
 
-'''
-inp = input("test: ")
-model1, model2, t1, t2 = train_normal_block()
+decoder_inputs = multi_modal.input[2]  # input_3
+decoder_state_input_h = keras.Input(shape=(64,))
+decoder_state_input_c = keras.Input(shape=(64,))
+decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
+decoder_lstm = multi_modal.layers[8] # lstm_2 
+decoder_outputs, state_h_dec, state_c_dec = decoder_lstm(
+    decoder_inputs, initial_state=decoder_states_inputs
+)
+decoder_states = [state_h_dec, state_c_dec]
+decoder_dense = multi_modal.layers[9]
+decoder_outputs = decoder_dense(decoder_outputs)
+decoder_model = keras.Model(
+    [decoder_inputs] + decoder_states_inputs, [decoder_outputs] + decoder_states
+)
 
-pred_1 = prediction(inp, model1, t1)
-pred_1 = list(pred_1)
-pred_1 = np.array(pred_1).reshape(-1, 1, 3)
 
-pred_2 = prediction(inp, model2, t2)
-pred_2 = list(pred_2)
-pred_2 = np.array(pred_2).reshape(-1, 1, 3)
-print(pred_2)
+def decode_sentence(inp):
+    model1, model2, t1, t2 = train_normal_block()
+    #make speech pred.
+    pred_1 = prediction(inp, model1, t1)
+    pred_1 = list(pred_1)
+    
+    #make emotion simuli pred.
+    pred_2 = prediction(inp, model2, t2)
+    pred_2 = list(pred_2)
+    
+    #combined the signal
+    combined_pred = np.column_stack((pred_1, pred_2))
+    combined_pred = combined_pred.reshape(-1, 2, 3)
+    print(combined_pred)
 
-pred = model.predict([pred_1, pred_2])
+    #encode sequence
+    seq = index_vocab(inp_vocab, inp_training, inp, True)
+    seq = np.array(seq)
+    seq = seq.reshape(-1, 25, 18)
+    states_value = encoder_model.predict([combined_pred, seq])
+    #make a starting point for the decoder
+    target_seq = np.zeros((1, 1, 22))
+    target_seq[0, 0, 0] = 1 # [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    writing = True
+    check = 0
+    pred_list = []
+    while writing:
+        pred, h, c = decoder_model.predict([target_seq] + states_value)
+        sampled_token_index = np.argmax(pred[0, -1, :])
+        if check != 5:
+            check = check + 1
+
+        else:
+            writing = False
+
+        target_seq = np.zeros((1, 1, 22))
+        target_seq[0, 0, sampled_token_index] = 1
+        pred_list.append(sampled_token_index)
+
+        states_value = [h, c]
+
+    return pred_list
+
+pred = decode_sentence(" turn on lights\n")
 print(pred)
-'''
+
+print(out_vocab)
