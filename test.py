@@ -44,7 +44,6 @@ class encoded:
 
     def encoded_doc(self):
         doc = self.t.texts_to_sequences(self.bag)
-        print(doc)
         p_doc = keras.preprocessing.sequence.pad_sequences(doc, maxlen=5, padding="post")
 
         out_empty = [0] * len(self.classes)
