@@ -2,7 +2,7 @@
 from tensorflow.python.framework.ops import disable_eager_execution
 from data.data import get_final_data, index_vocab
 
-from models.emotions_rec import model_emotion
+from emotions_rec import model_emotion
 disable_eager_execution()
 
 from tensorflow.keras.layers import Dense
