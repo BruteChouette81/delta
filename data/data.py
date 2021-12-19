@@ -174,7 +174,7 @@ def get_final_data():
         seq = index_vocab(inp_vocab, inp_training, sample, True)
         x_inp_data.append(seq)
 
-    return doc1, doc2, x_inp_data, x_out_data, inp_training, inp_vocab, out_vocab, out_training
+    return doc1, doc2, x_inp_data, x_out_data, inp_training, inp_vocab, out_vocab, out_training, doc_input
 
 
 

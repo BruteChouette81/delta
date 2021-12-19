@@ -1,8 +1,11 @@
 
+import re
+import tensorflow as tf
 from tensorflow.python.framework.ops import disable_eager_execution
+from tensorflow.python.keras.layers.pooling import GlobalAveragePooling1D
 from data.data import get_final_data, index_vocab
 
-from models.emotions_rec import model_emotion
+from models.emotions_rec import model_emotion, new_model_test
 disable_eager_execution()
 
 from tensorflow.keras.layers import Dense
@@ -13,25 +16,26 @@ from tensorflow.keras.layers import concatenate
 from keras.models import load_model
 import numpy as np
 from tensorflow.python.keras.engine.input_layer import Input
-from test import prediction
 
-from models.speak_rec import model_speech_rec
+from models.speak_rec import model_speech_rec, new_model_test1
 
 INMAXLEN = 25
 OUTMAXLEN = 27
 
-def process_output(output_vocab):
-    
+def process_output():
     # make generative// unsupervised program with another type of learning ( next sequence for answer and the others (action/ requirements) linear regression)
-    feature_input = Input(shape=(2, 3)) # put one input per features
-    text_input = Input(shape=(25, 18)) # modify shape (maxlen, len(vocab_input))
+    emotion_model = new_model_test(3)
+    emotion_dense = Dense(64, activation = "relu")(emotion_model.output)
+    speech_model = new_model_test1(3)
+    speech_dense = Dense(64, activation = "relu")(speech_model.output)
 
-    x = Dense(16, activation="relu")(feature_input)
-    x = Dense(64, activation="relu")(x)
+    #### text model
+    text_input = Input(shape=(25, 18)) # modify shape (maxlen, len(vocab_input))
+    encoder_lstm = LSTM(64, input_shape=(25, 18), return_sequences=True, return_state=False)(text_input)# change this to dense
+    outputs_text = Dense(64, activation="relu")(encoder_lstm)
+    text_model = Model(inputs=text_input, outputs=outputs_text)
     
-    encoder_lstm = LSTM(64, input_shape=(25, 18), return_sequences=True, return_state=False)(text_input)# change this to dense 
-    
-    combined = concatenate(inputs=[x, encoder_lstm], axis=1) #axis= 1
+    combined = concatenate(inputs=[tf.reshape(emotion_dense, [-1, 1, 64]), tf.reshape(speech_dense, [-1, 1, 64]), text_model.output], axis=1) # make the two first output 3-dim
 
     encoder = LSTM(64, return_state=True)
     
@@ -47,9 +51,10 @@ def process_output(output_vocab):
     decoder_dense = Dense(22, activation='softmax')
     decoder_outputs = decoder_dense(decoder_output) #output[0]  for one hot encoding// (decoder_output)
 
-    model = Model(inputs=[feature_input, text_input, decoder_input], outputs=decoder_outputs)
+    model = Model(inputs=[emotion_model.input, speech_model.input, text_input, decoder_input], outputs=decoder_outputs)
     print(model.summary())
     return model
+
 
 def train_normal_block():
     # fit the two tokenizers
@@ -65,11 +70,24 @@ def train_normal_block():
 
 
 
-doc1, doc2, x_inp_data, x_out_data, inp_training, inp_vocab, out_vocab, out_training, notutile = get_final_data()
+doc1, doc2, x_inp_data, x_out_data, inp_training, inp_vocab, out_vocab, out_training, doc_input = get_final_data() # doc1 = speech, doc2 = emotion
 # chift one char from the output to make input to lstm decoder and the original will be target
-combined_doc = np.column_stack((doc1, doc2))
-combined_doc = combined_doc.reshape(-1, 2, 3)
-print(f"Combined feature: {combined_doc}")
+print(doc_input)
+def prep_for_prediction(inp, t):
+    # clean and interger encode the inputs
+    clean = re.sub(r'[^ a-z A-Z 0-9]', "", inp)
+    test_word = clean.split()
+    numeric_ls = t.texts_to_sequences(test_word)
+
+    # if the word is not in word index, put 0
+    if [] in numeric_ls:
+        numeric_ls = list(filter(None, numeric_ls))
+
+    # pad the interger
+    numeric_ls = np.array(numeric_ls).reshape(1, len(numeric_ls))
+    x = keras.preprocessing.sequence.pad_sequences(numeric_ls, maxlen=5, padding="post")
+    return x
+
 x_out_targ = []
 for i in x_out_data:
     x_out_targ.append(i[1:] + [[0] * 22])
@@ -80,15 +98,14 @@ x_out_targ = np.array(x_out_targ)
 
 print(f"X input data shape: {x_out_targ.shape}")
 ### TODO a decision making system 
-'''
-multi_modal = process_output(x_out_data[0][0])
+
+multi_modal = process_output()
 
 multi_modal.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=["accuracy"])
-multi_modal.fit([combined_doc, x_inp_data, x_out_data], x_out_targ,
-          epochs=100,
-          batch_size=1)
+#multi_modal.fit([combined_doc, x_inp_data, x_out_data], x_out_targ, epochs=100, batch_size=1)
 
-multi_modal.save("multimodalities")
+#multi_modal.save("multimodalities")
+
 '''
 multi_modal = load_model("multimodalities")
 encoder_input_1 = multi_modal.input[0]  # input_1
@@ -172,3 +189,4 @@ pred = decode_sentence(input)
 sentence = token_char(pred, out_vocab)
 #print(f"User > {input}")
 print(f"Bot > {sentence}")
+'''
