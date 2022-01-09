@@ -19,6 +19,8 @@ from tensorflow.python.keras.engine.input_layer import Input
 
 from models.speak_rec import model_speech_rec, new_model_test1
 
+tf.compat.v1.experimental.output_all_intermediates(True)
+
 INMAXLEN = 25
 OUTMAXLEN = 27
 
@@ -64,15 +66,17 @@ def train_normal_block():
     notusedmodel1, x_speech_train, y_speech_train, t1 = model_speech_rec("ir.json").model1()
     
     #load the trained model
-    model2 = load_model("../server_test/models/model2.h5")
-    model1 = load_model("../server_test/models/model1.h5")
-    return model1, model2, t1, t2
+    #model2 = load_model("../server_test/models/model2.h5")
+    #model1 = load_model("../server_test/models/model1.h5")
+    return t1, t2 # model1, model2
 
 
 
 doc1, doc2, x_inp_data, x_out_data, inp_training, inp_vocab, out_vocab, out_training, doc_input = get_final_data() # doc1 = speech, doc2 = emotion
 # chift one char from the output to make input to lstm decoder and the original will be target
-print(doc_input)
+
+t1, t2 = train_normal_block() #model1, model2, ...
+
 def prep_for_prediction(inp, t):
     # clean and interger encode the inputs
     clean = re.sub(r'[^ a-z A-Z 0-9]', "", inp)
@@ -88,6 +92,21 @@ def prep_for_prediction(inp, t):
     x = keras.preprocessing.sequence.pad_sequences(numeric_ls, maxlen=5, padding="post")
     return x
 
+x_inp_speech = []
+x_inp_emotion = []
+for inp in doc_input:
+    speech = prep_for_prediction(inp, t1)
+    x_inp_speech.append(speech)
+    emotion = prep_for_prediction(inp, t2)
+    x_inp_emotion.append(emotion)
+
+x_inp_emotion = np.array(x_inp_emotion)
+x_inp_emotion = x_inp_emotion.reshape((5,5))
+
+x_inp_speech = np.array(x_inp_speech)
+x_inp_speech = x_inp_speech.reshape((5,5))
+
+
 x_out_targ = []
 for i in x_out_data:
     x_out_targ.append(i[1:] + [[0] * 22])
@@ -96,38 +115,45 @@ x_inp_data = np.array(x_inp_data)
 x_out_data = np.array(x_out_data)
 x_out_targ = np.array(x_out_targ)
 
-print(f"X input data shape: {x_out_targ.shape}")
+print(f"X input data shape: {x_inp_emotion.shape}")
 ### TODO a decision making system 
-
+'''
 multi_modal = process_output()
 
 multi_modal.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=["accuracy"])
-#multi_modal.fit([combined_doc, x_inp_data, x_out_data], x_out_targ, epochs=100, batch_size=1)
+multi_modal.fit([x_inp_emotion, x_inp_speech, x_inp_data, x_out_data], x_out_targ, epochs=100, batch_size=1)
 
-#multi_modal.save("multimodalities")
+multi_modal.save_weights("multimodal/model3")
 
 '''
-multi_modal = load_model("multimodalities")
+
+multi_modal = process_output()
+
+multi_modal.load_weights("multimodal/model3")
 encoder_input_1 = multi_modal.input[0]  # input_1
 encoder_input_2 = multi_modal.input[1]  # input_2
-encoder_outputs, state_h_enc, state_c_enc = multi_modal.layers[7].output  # lstm_1 [8]
+encoder_input_3 = multi_modal.input[2]  # input_3 
+#print(multi_modal.layers)
+encoder_outputs, state_h_enc, state_c_enc = multi_modal.layers[23].output  # lstm_1 [8]
 encoder_states = [state_h_enc, state_c_enc]
-encoder_model = Model([encoder_input_1, encoder_input_2], encoder_states)
+encoder_model = Model([encoder_input_1, encoder_input_2, encoder_input_3], encoder_states)
 
-decoder_inputs = multi_modal.input[2]  # input_3
+decoder_inputs = multi_modal.input[3]  # input_4
 decoder_state_input_h = keras.Input(shape=(64,))
 decoder_state_input_c = keras.Input(shape=(64,))
 decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
-decoder_lstm = multi_modal.layers[8] # lstm_2 
+decoder_lstm = multi_modal.layers[24] # lstm_2
 decoder_outputs, state_h_dec, state_c_dec = decoder_lstm(
     decoder_inputs, initial_state=decoder_states_inputs
 )
 decoder_states = [state_h_dec, state_c_dec]
-decoder_dense = multi_modal.layers[9]
+decoder_dense = multi_modal.layers[25]
 decoder_outputs = decoder_dense(decoder_outputs)
-decoder_model = keras.Model(
+decoder_model = Model(
     [decoder_inputs] + decoder_states_inputs, [decoder_outputs] + decoder_states
 )
+
+
 def token_char(tokens, vocab):
     sentence = ""
     for token in tokens:
@@ -139,25 +165,17 @@ def token_char(tokens, vocab):
     return sentence
 
 def decode_sentence(inp):
-    model1, model2, t1, t2 = train_normal_block()
-    #make speech pred.
-    pred_1 = prediction(inp, model1, t1)
-    pred_1 = list(pred_1)
-    
-    #make emotion simuli pred.
-    pred_2 = prediction(inp, model2, t2)
-    pred_2 = list(pred_2)
-    
-    #combined the signal
-    combined_pred = np.column_stack((pred_1, pred_2))
-    combined_pred = combined_pred.reshape(-1, 2, 3)
-    #print(combined_pred)
+    x_speech = prep_for_prediction(inp, t1)
+    inp_speech = x_speech.reshape((1,5))
+
+    x_emotion = prep_for_prediction(inp, t2)
+    inp_emotion = x_emotion.reshape((1,5))
 
     #encode sequence
     seq = index_vocab(inp_vocab, inp_training, inp, True)
     seq = np.array(seq)
     seq = seq.reshape(-1, 25, 18)
-    states_value = encoder_model.predict([combined_pred, seq])
+    states_value = encoder_model.predict([inp_emotion, inp_speech, seq])
     #make a starting point for the decoder
     target_seq = np.zeros((1, 1, 22))
     target_seq[0, 0, 0] = 1 # [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -180,13 +198,13 @@ def decode_sentence(inp):
         states_value = [h, c]
 
     return pred_list
-
+'''
 input = str(input("type>"))
 input = " " + input + "\n"
-pred = decode_sentence(input)
+'''
+pred = decode_sentence(" hello\n")
 #print(pred)
 
 sentence = token_char(pred, out_vocab)
 #print(f"User > {input}")
 print(f"Bot > {sentence}")
-'''

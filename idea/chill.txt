@@ -1,1 +1,7 @@
 reflexion that can unlock knew idea
+
+
+the model should have multi modalities input and processing( sota. encoder) (multi sences) and, after all those input are concatonate, a decoder (sota) that do the task it is trained on 
+
+for e.: a decoder that is trained on sequence generating based on the concat weights ( or after concat, a dense neral net. to make a transition)
+*differents decoders trained on different tasks

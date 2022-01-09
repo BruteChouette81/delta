@@ -70,7 +70,7 @@ class TokenAndPositionEmbedding(layers.Layer):
 
 
 def new_model_test(len_tags):
-    inputs = layers.Input(shape=(maxlen, ))
+    inputs = layers.Input(name="emo_rec_input", shape=(maxlen, ))
     embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
     x = embedding_layer(inputs)
     transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
