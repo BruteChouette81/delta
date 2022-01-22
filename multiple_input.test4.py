@@ -5,7 +5,7 @@ from tensorflow.python.framework.ops import disable_eager_execution
 from tensorflow.python.keras.layers.pooling import GlobalAveragePooling1D
 from data.data import get_final_data, index_vocab
 
-from models.emotions_rec import model_emotion, new_model_test
+from emotions_rec import get_emotion_model, model_emotion, new_model_test
 disable_eager_execution()
 
 from tensorflow.keras.layers import Dense
@@ -17,7 +17,7 @@ from keras.models import load_model
 import numpy as np
 from tensorflow.python.keras.engine.input_layer import Input
 
-from models.speak_rec import model_speech_rec, new_model_test1
+from speak_rec import get_speech_model, model_speech_rec, new_model_test1
 
 tf.compat.v1.experimental.output_all_intermediates(True)
 
@@ -26,9 +26,15 @@ OUTMAXLEN = 27
 
 def process_output():
     # make generative// unsupervised program with another type of learning ( next sequence for answer and the others (action/ requirements) linear regression)
-    emotion_model = new_model_test(3)
+
+    #emotion_model = new_model_test(3) # freeze the model to pretrain it
+    emotion_model = get_emotion_model()
+    emotion_model.trainable = False
     emotion_dense = Dense(64, activation = "relu")(emotion_model.output)
-    speech_model = new_model_test1(3)
+
+    #speech_model = new_model_test1(3
+    speech_model = get_speech_model()
+    speech_model.trainable = False
     speech_dense = Dense(64, activation = "relu")(speech_model.output)
 
     #### text model
@@ -117,16 +123,15 @@ x_out_targ = np.array(x_out_targ)
 
 print(f"X input data shape: {x_inp_emotion.shape}")
 ### TODO a decision making system 
-'''
+
 multi_modal = process_output()
 
 multi_modal.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=["accuracy"])
-multi_modal.fit([x_inp_emotion, x_inp_speech, x_inp_data, x_out_data], x_out_targ, epochs=100, batch_size=1)
+multi_modal.fit([x_inp_emotion, x_inp_speech, x_inp_data, x_out_data], x_out_targ, epochs=20, batch_size=1)
 
-multi_modal.save_weights("multimodal/model3")
+multi_modal.save("multimodal/model3")
 
 '''
-
 multi_modal = process_output()
 
 multi_modal.load_weights("multimodal/model3")
@@ -208,3 +213,4 @@ pred = decode_sentence(" hello\n")
 sentence = token_char(pred, out_vocab)
 #print(f"User > {input}")
 print(f"Bot > {sentence}")
+'''

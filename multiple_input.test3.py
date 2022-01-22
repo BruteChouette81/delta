@@ -2,7 +2,7 @@
 from tensorflow.python.framework.ops import disable_eager_execution
 from data.data import get_final_data, index_vocab
 
-from models.emotions_rec import model_emotion
+from emotions_rec import model_emotion
 disable_eager_execution()
 
 from tensorflow.keras.layers import Dense
@@ -15,7 +15,7 @@ import numpy as np
 from tensorflow.python.keras.engine.input_layer import Input
 from test import prediction
 
-from models.speak_rec import model_speech_rec
+from speak_rec import model_speech_rec
 
 INMAXLEN = 25
 OUTMAXLEN = 27

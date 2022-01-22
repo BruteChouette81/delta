@@ -1,17 +1,18 @@
 import keras
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
-import numpy as np
+from tensorflow.python.keras.saving.save import load_model
 
-from test import encoded
 from test import dataset
+from test import encoded
 
 embed_dim = 4  # Embedding size for each token
 num_heads = 2  # Number of attention heads
 ff_dim = 16  # Hidden layer size in feed forward network inside transformer
 
 maxlen = 5
-vocab_size = 45
+vocab_size = 33
 
 
 def prepare_train(data):
@@ -44,7 +45,7 @@ class TransformerBlock(layers.Layer):
         self.dropout1 = layers.Dropout(rate)
         self.dropout2 = layers.Dropout(rate)
 
-    def call(self, inputs, training = True): #change =True 
+    def call(self, inputs, training = True):
         attn_output = self.att(inputs, inputs)
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(inputs + attn_output)
@@ -67,10 +68,23 @@ class TokenAndPositionEmbedding(layers.Layer):
         return x + positions
 
     
+class model_speech_rec:
+    def __init__(self, data):
+        self.data = data
+
+    def model1(self):
+        x_train, y_train, t, classes = prepare_train(self.data)
+        model = keras.Sequential([
+            keras.layers.Embedding(33, 128),
+            keras.layers.GlobalAveragePooling1D(),
+            keras.layers.Dense(16, activation='relu'),
+            keras.layers.Dense(len(y_train[0]), activation='sigmoid')
+        ])
+        return model, x_train, y_train, t
 
 
-def new_model_test(len_tags):
-    inputs = layers.Input(name="emo_rec_input", shape=(maxlen, ))
+def new_model_test1(len_tags):
+    inputs = layers.Input(name="speach_rec_input",shape=(maxlen, ))
     embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
     x = embedding_layer(inputs)
     transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
@@ -82,58 +96,25 @@ def new_model_test(len_tags):
     outputs = layers.Dense(3, activation="softmax")(x)
 
     model = keras.Model(inputs=inputs, outputs=outputs)
-    model.load_weights("models_test/emotion_test")
+    #model.summary()
+    #model.load_weights("model_test1/speak_rec")
     return model
 
 
 
-class model_emotion:
-    def __init__(self, data):
-        self.data = data
-
-    def model2(self):
-        x_train, y_train, t, classes = prepare_train(self.data)
-        model = keras.Sequential([
-            keras.layers.Embedding(45, 128),
-            keras.layers.GlobalAveragePooling1D(),
-            keras.layers.Dense(16, activation='relu'),
-            keras.layers.Dense(len(y_train[0]), activation='sigmoid')
-        ])
-        return model, x_train, y_train, t
-
-
-
 def train():
-    x_train, y_train, t, classes = prepare_train("emotion_pattern.json")
-    print(len(y_train[0]))
-    model = new_model_test(len(y_train[0]))
+    x_train, y_train, t, classes = prepare_train("ir.json")
+    #x_train = x_train.reshape(-1, 18, 5)
+    #y_train = y_train.reshape(-1, 18, 3)
+    model = new_model_test1(len(y_train[0]))
     model.summary()
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    history = model.fit(x_train, y_train, batch_size=1, epochs=1)
+    model.fit(x_train, y_train, batch_size=1, epochs=10)
+    #model.save("model_test1/speak_rec")
 
-    #### in super model create two model for features:
-    # inputs = layers.Input(shape=(maxlen, ))
-    #embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    #x = embedding_layer(inputs)
-    #transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
-    #x = transformer_block(x)
-    #x = layers.GlobalAveragePooling1D()(x)
-    #x = layers.Dropout(0.1)(x)
-    #x = layers.Dense(20, activation="relu")(x)
-    #x = layers.Dropout(0.1)(x)
-    #outputs = layers.Dense(3, activation="softmax")(x)
-    #x = Model(inputs=inputs, output=outputs)
-    #and load weight for specifies feature
-    #x.load_weights("models_test/emotion_test")
-    #### and do that for evry feature and after concat the specific model so they all are the same but have their specifc weights
+def get_speech_model():
+    model = load_model("models_test/emotion_test") # custom_objects = {"TokenAndPositionEmbedding": TokenAndPositionEmbedding, "TransformerBlock": TransformerBlock}
+    return model
 
-    #model.save_weights("models_test/emotion_test")
-    '''
-    model2, x_emotion_train, y_emotion_train, t2 = model_emotion("emotion_pattern.json").model2() # make dataset a parameter
-    model2.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy']) #make loss and opt. params
-    model2.fit(x_emotion_train, y_emotion_train, epochs=100, batch_size=2, verbose=1) # amke epoch and batch params
-    model2.save("../server_test/models/model2.h5")
-    '''
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     train()
