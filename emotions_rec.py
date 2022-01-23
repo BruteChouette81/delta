@@ -1,4 +1,4 @@
-import keras
+from tensorflow import keras
 import tensorflow as tf
 from tensorflow.keras import layers
 import numpy as np
@@ -103,7 +103,7 @@ class TokenAndPositionEmbedding(layers.Layer):
 
 def new_model_sequential():
     model = keras.Sequential([
-        layers.Input(shape=(maxlen, )), # name="emo_rec_input"
+        layers.Input(shape=(maxlen, ), name="emo_rec_input"), # name="emo_rec_input"
         TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim),
         TransformerBlock(embed_dim, num_heads, ff_dim),
         layers.GlobalAveragePooling1D(),
@@ -115,7 +115,7 @@ def new_model_sequential():
     return model
 
 def new_model_test():
-    inputs = layers.Input(shape=(maxlen, )) # name="emo_rec_input"
+    inputs = layers.Input(shape=(maxlen, ), name="emo_rec_input") # name="emo_rec_input"
     embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
     x = embedding_layer(inputs)
     transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
@@ -127,7 +127,7 @@ def new_model_test():
     outputs = layers.Dense(3, activation="softmax")(x)
 
     model = keras.Model(inputs=inputs, outputs=outputs)
-    #model.load_weights("models_test/emotion_test")
+    #model.load_weights("weights/emotion_test")
     return model
 
 
@@ -206,7 +206,15 @@ def get_emotion_model(top=True):
 if __name__ == '__main__':
     #train()
 
-    emotion_model = get_emotion_model(False)
+    emotion_model = get_emotion_model(True)
     emotion_model.summary()
+    x_train, y_train, t, classes = prepare_train("emotion_pattern.json")
+    #print(len(y_train[0]))
+        
+    #model = new_model_sequential()
+    #model.summary()
+    emotion_model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+    emotion_model.fit(x_train, y_train, batch_size=1, epochs=15)
+        
     #emotion_model._layers.pop()
     #emotion_model.summary()

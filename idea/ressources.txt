@@ -5,3 +5,5 @@ file:///C:/Users/Utilisateur/Downloads/IJAITFINALPhillips-WrenSubmission020712.p
 https://medium.com/softmax/multi-input-seq2seq-generation-with-keras-and-talos-84d8bdec2d46 == multi input seq to seq
 
 https://blog.keras.io/a-ten-minute-introduction-to-sequence-to-sequence-learning-in-keras.html == base of seq to seq model
+
+https://medium.com/deep-learning-with-keras/save-load-keras-models-with-custom-layers-8f55ba9183d2 == build mini gpt3

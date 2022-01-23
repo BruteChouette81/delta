@@ -1,6 +1,6 @@
-import keras
-import numpy as np
 import tensorflow as tf
+from tensorflow import keras
+import numpy as np
 from tensorflow.keras import layers
 from tensorflow.python.keras.saving.save import load_model
 
@@ -30,9 +30,9 @@ def prepare_train(data):
     return x_train, y_train, t, classes
 
 
-class TransformerBlock(layers.Layer):
+class TransformerBlock1(layers.Layer):
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super(TransformerBlock, self).__init__()
+        super(TransformerBlock1, self).__init__()
         self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
         self.ffn = keras.Sequential(
             [
@@ -54,9 +54,9 @@ class TransformerBlock(layers.Layer):
         return self.layernorm2(out1 + ffn_output) # out2
 
 
-class TokenAndPositionEmbedding(layers.Layer):
+class TokenAndPositionEmbedding1(layers.Layer):
     def __init__(self, maxlen, vocab_size, embed_dim):
-        super(TokenAndPositionEmbedding, self).__init__()
+        super(TokenAndPositionEmbedding1, self).__init__()
         self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
         self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
 
@@ -82,22 +82,35 @@ class model_speech_rec:
         ])
         return model, x_train, y_train, t
 
+def new_model_sequential_speech():
+    model = keras.Sequential([
+        layers.Input(shape=(maxlen, ), name="speach_rec_input"), # name="emo_rec_input"
+        TokenAndPositionEmbedding1(maxlen, vocab_size, embed_dim),
+        TransformerBlock1(embed_dim, num_heads, ff_dim),
+        layers.GlobalAveragePooling1D(name="pooling1D_speech"),
+        layers.Dropout(0.1, name="dropout0_speech"),
+        layers.Dense(20, activation="relu", name="dense0_speech"),
+        layers.Dropout(0.1, name="dropout1_speech"),
+        layers.Dense(3, activation="softmax", name="dense1_speech")
+    ])
+    return model
+
 
 def new_model_test1(len_tags):
     inputs = layers.Input(name="speach_rec_input",shape=(maxlen, ))
-    embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
+    embedding_layer = TokenAndPositionEmbedding1(maxlen, vocab_size, embed_dim)
     x = embedding_layer(inputs)
-    transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
+    transformer_block = TransformerBlock1(embed_dim, num_heads, ff_dim)
     x = transformer_block(x)
-    x = layers.GlobalAveragePooling1D()(x)
-    x = layers.Dropout(0.1)(x)
-    x = layers.Dense(20, activation="relu")(x)
-    x = layers.Dropout(0.1)(x)
-    outputs = layers.Dense(3, activation="softmax")(x)
+    x = layers.GlobalAveragePooling1D(name="pooling1D_speech")(x)
+    x = layers.Dropout(0.1, name="dropout0_speech")(x)
+    x = layers.Dense(20, activation="relu", name="dense0_speech")(x)
+    x = layers.Dropout(0.1, name="dropout1_speech")(x)
+    outputs = layers.Dense(3, activation="softmax", name="dense1_speech")(x)
 
     model = keras.Model(inputs=inputs, outputs=outputs)
     #model.summary()
-    #model.load_weights("model_test1/speak_rec")
+    #model.load_weights("weights/speak_rec")
     return model
 
 
@@ -106,15 +119,33 @@ def train():
     x_train, y_train, t, classes = prepare_train("ir.json")
     #x_train = x_train.reshape(-1, 18, 5)
     #y_train = y_train.reshape(-1, 18, 3)
-    model = new_model_test1(len(y_train[0]))
+    #model = new_model_test1(len(y_train[0])) old model 
+    model = new_model_sequential_speech()
     model.summary()
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    model.fit(x_train, y_train, batch_size=1, epochs=10)
-    #model.save("model_test1/speak_rec")
+    model.fit(x_train, y_train, batch_size=1, epochs=20)
+    model.save("models_test/speak_rec")
 
-def get_speech_model():
-    model = load_model("models_test/emotion_test") # custom_objects = {"TokenAndPositionEmbedding": TokenAndPositionEmbedding, "TransformerBlock": TransformerBlock}
-    return model
+def get_speech_model(top=True):
+    model = load_model("models_test/speak_rec") # custom_objects = {"TokenAndPositionEmbedding": TokenAndPositionEmbedding, "TransformerBlock": TransformerBlock}
+    if not top:
+        model.pop() # check if model is sequential
+        return model
+
+    else:
+        return model
 
 if __name__ == "__main__":
-    train()
+    #train()
+    model = get_speech_model(True)
+    model.summary()
+    x_train, y_train, t, classes = prepare_train("ir.json")
+    #x_train = x_train.reshape(-1, 18, 5)
+    #y_train = y_train.reshape(-1, 18, 3)
+    #model = new_model_test1(len(y_train[0])) old model 
+    #model = new_model_sequential_speech()
+    #model.summary()
+    model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+    model.fit(x_train, y_train, batch_size=1, epochs=2)
+    
+    #print(tf.__version__)

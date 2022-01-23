@@ -6,6 +6,10 @@ import tensorflow as tf
 from tensorflow.keras import layers
 
 
+### add from datasets import load_dataset
+### dataset = load_dataset("emotion")
+### and combine those data set
+
 dataset = load_dataset("poem_sentiment")
 #print(dataset)
 embed_dim = 4  # Embedding size for each token
