@@ -48,7 +48,7 @@ class TransformerBlock(layers.Layer):
         self.dropout1 = layers.Dropout(rate)
         self.dropout2 = layers.Dropout(rate)
 
-    def call(self, inputs, training = True): #change =True 
+    def call(self, inputs, training): #training = True 
         attn_output = self.att(inputs, inputs)
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(inputs + attn_output)
@@ -198,6 +198,7 @@ def get_emotion_model(top=True):
     model = load_model("models_test/emotion_seq") # custom_objects = {"TokenAndPositionEmbedding": TokenAndPositionEmbedding, "TransformerBlock": TransformerBlock}
     if not top:
         model.pop() # check if model is sequential
+        model.pop()
         return model
 
     else:

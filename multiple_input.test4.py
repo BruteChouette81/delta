@@ -33,18 +33,18 @@ def process_output(trainable):
     if not trainable:
         emotion_model.trainable = False
 
-    emotion_dense = Dense(64, activation = "relu")(emotion_model.output)
+    emotion_dense = Dense(64, activation = "relu")(emotion_model.output) #remove
 
     #speech_model = new_model_test1(3
     speech_model = get_speech_model(False)
     if not trainable:
         speech_model.trainable = False
 
-    speech_dense = Dense(64, activation = "relu")(speech_model.output)
+    speech_dense = Dense(64, activation = "relu")(speech_model.output) #remove 
 
     #### text model
     text_input = Input(shape=(25, 18)) # modify shape (maxlen, len(vocab_input))
-    encoder_lstm = LSTM(64, input_shape=(25, 18), return_sequences=True, return_state=False)(text_input)# change this to dense
+    encoder_lstm = LSTM(64, input_shape=(25, 18), return_sequences=True, return_state=False)(text_input) # transformer encoder like other (text) modalities
     outputs_text = Dense(64, activation="relu")(encoder_lstm)
     text_model = Model(inputs=text_input, outputs=outputs_text)
     
