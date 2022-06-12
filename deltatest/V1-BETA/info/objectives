@@ -1,0 +1,13 @@
+modling a encoder-decoder DONE
+modeling an autoregressive model DONE
+modeling classification model
+
+encoder-decoder:
+    be able to save and load the encoder-decoder model DONE
+    have a encoder decoder pre-training dataset
+    have a reddit conversation extracter ALMOST DONE
+    have some helpers functions for making training dataset 
+    try to make a conditionnal decoder
+    
+
+

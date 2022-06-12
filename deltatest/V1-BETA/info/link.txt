@@ -1,0 +1,7 @@
+https://medium.com/saarthi-ai/how-do-automated-conversational-agents-learn-80d2c62e5594 - conversation policy
+
+https://github.com/lukalabs/cakechat/blob/master/cakechat/dialog_model/model.py - cake chat Model (emotion based generation)
+
+https://github.com/lucidrains/RETRO-pytorch/blob/main/retro_pytorch/retro_pytorch.py - retro cross-attention layer
+
+https://github.com/keras-team/keras-io/blob/master/examples/nlp/text_generation_fnet.py - text_gen tutorial

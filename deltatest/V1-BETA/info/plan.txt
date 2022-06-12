@@ -1,0 +1,19 @@
+delta divise in two majour components 
+
+1: functionnal component
+    use entity rec + intent rec to find the task (ex: turn on the light of the kitchen = [action, action, pad, iot, pad, pad, location], intent = turn on light)
+    use algo. to find where and what to do the action
+
+2: dialogue component
+    use text generation (with context embedding and retrivial db) to generate a personnalised responce
+
+    for question anwering, the use of retrivial db will be the only option
+
+    use bert encoding to encode embeddings of different emotionnal modality and chunk them to the real model (https://arxiv.org/pdf/2112.04426.pdf)
+    feed this embedding to the model attention to hyave a more deep understanding of the behavior of the user
+
+
+what we can do:
+    use smart home
+    perform action 
+    have a personnalised conversation agent that remember us

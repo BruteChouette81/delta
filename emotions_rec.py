@@ -199,6 +199,9 @@ def get_emotion_model(top=True):
     if not top:
         model.pop() # check if model is sequential
         model.pop()
+        model.pop()
+        model.pop()
+        model.pop()
         return model
 
     else:
@@ -215,7 +218,7 @@ if __name__ == '__main__':
     #model = new_model_sequential()
     #model.summary()
     emotion_model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    emotion_model.fit(x_train, y_train, batch_size=1, epochs=15)
+    #emotion_model.fit(x_train, y_train, batch_size=1, epochs=15)
         
     #emotion_model._layers.pop()
     #emotion_model.summary()

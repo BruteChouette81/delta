@@ -178,6 +178,8 @@ model.fit(x_train, y_train, batch_size=32, epochs=20)
 model.save("emotion_new_data")
 '''
 model = load_model("models_test/emotion_new_data")
+
+model.summary()
 test = ["i have seen heard and read over the past couple of days i am left feeling impressed by more than a few companies"] 
 numericls = t.texts_to_sequences(test)
 print(numericls)
