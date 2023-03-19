@@ -1,0 +1,7 @@
+Goal: create an AI based on Delta research to focus on replcating human conversation and impersonation of different personality
+
+model architechture: 
+    as the Delta research has prooved, the more "human information" you have, the easier it is to replicate certain personnalities. Based on those 
+    research, the Crystal AI will be a transformer autoencoder that focuses on 3 feeds of modalities: text, emotions and context. A retrieval database will
+    also be connected to the model as an intranet of centralized information to help coherence and truthfullness
+

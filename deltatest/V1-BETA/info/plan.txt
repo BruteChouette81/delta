@@ -1,11 +1,12 @@
 delta divise in two majour components 
+1: knowing what to say and 2: knowing what to do 
 
 1: functionnal component
     use entity rec + intent rec to find the task (ex: turn on the light of the kitchen = [action, action, pad, iot, pad, pad, location], intent = turn on light)
     use algo. to find where and what to do the action
 
 2: dialogue component
-    use text generation (with context embedding and retrivial db) to generate a personnalised responce
+    use text generation (with context embedding and retrivial db) to generate a personnalised responses
 
     for question anwering, the use of retrivial db will be the only option
 
@@ -17,3 +18,30 @@ what we can do:
     use smart home
     perform action 
     have a personnalised conversation agent that remember us
+
+
+
+Plan: 
+
+Tokenization: DONE
+    -clean code in manage_data.py
+    -make a good vectorizer that accept ponctuation 
+    -make start and end token appear at inference time
+    -rewrite all the data for being one line = one sample 
+
+Better data: Daily dialogue + wikitext + custom reddit extractor 
+
+
+create 2 models: 
+-   first is SOTA gpt-style model trained on dialogues
+-   the other one is a multi-modal auto-encoder (autoregressive) based on the DELTA Architecture
+
+: compare which one is the best for 
+
+second part: 
+    same brain: different part is used 
+    generate what to do and use algorythme to execute orders formulated by the generation
+
+
+
+

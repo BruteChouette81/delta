@@ -1,8 +1,7 @@
 
+from itertools import count
 import re
-from this import d
-import time
-from click import prompt
+#import time
 from datasets import load_dataset
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow import keras
@@ -12,13 +11,16 @@ from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 import json
 import string
 
+
 conv_ai_dataset = load_dataset("conv_ai_2") #https://raw.githubusercontent.com/alexa/Topical-Chat/master/conversations/train.json
+daily_dial_dataset = load_dataset("daily_dialog")
 empat_dataset = load_dataset("empathetic_dialogues")
 #https://huggingface.co/datasets/gem/viewer/schema_guided_dialog/train
 
 strip_chars = string.punctuation
-strip_chars = strip_chars.replace("[", "")
 strip_chars = strip_chars.replace("]", "")
+strip_chars = strip_chars.replace("[", "")
+
 def custom_standardization(input_string):
     lowercased = tf.strings.lower(input_string)
     return tf.strings.regex_replace(lowercased, "[%s]" % re.escape(strip_chars), "")
@@ -40,18 +42,21 @@ vectorize_layer_generative = TextVectorization(
     max_tokens=40000 - 1,
     output_mode="int",
     output_sequence_length=80 + 1,
-    standardize=custom_standardization
+    standardize=preprocess_text #custom_standardization
 )
 
 #encoder/decoder vectorize layers
 vectorize_layer_autoenc = TextVectorization(
-    max_tokens=10000,
+    max_tokens=40000,
     output_mode="int",
     output_sequence_length=30,
     standardize=preprocess_text
 )
 
 
+
+
+# JSON tests
 
 def process_x_dataset_emotion(dataset):
     bag = [] #[]
@@ -153,6 +158,14 @@ def test_load_vectorization():
 
     return ({"encoder_inputs": x, "decoder_inputs": y[:, :-1],}, y[:, 1:])
 
+
+
+
+
+
+
+#writing 
+
 def clean_seq(inp: str):
     inp = inp.lower()
     inp = inp.replace("\n", " ")
@@ -168,7 +181,7 @@ def clean_seq(inp: str):
     return clean_inp
 
 
-def write_conv_ai():
+def write_conv_ai_gen3():
     bag = []
     illegal = "searching for peer"
     dialogue = ""
@@ -193,6 +206,40 @@ def write_conv_ai():
     with open("generative_data3.txt", "w", encoding = "utf-8", errors="ignore") as fp:
         for text in bag:
             if text != "<start> <end>" and not illegal in text:
+                fp.write(text + "\n")
+            else:
+                continue
+        fp.close()
+
+        print("[INFO] stop writing")
+
+
+# the goal of gen4 is to add special tokens at inference time and keep ponctuation 
+def write_conv_ai_gen4():
+    bag = []
+    illegal = "searching for peer"
+    dialogue = ""
+    ### the technique here is to combined all sentences of a dialogue
+    # into 1 string and adding start and end special tokens
+    print("[INFO] start extracting")
+    for sequence in conv_ai_dataset['train']['dialog']:
+        for text in sequence:
+            if len(sequence) > 1: # if it is a real dialogue
+                dialogue += str(text['text']) + " "
+            else:
+                continue
+        
+        #dialogue = "<start> " + dialogue + "<end>"
+        dialogue = clean_seq(dialogue)
+        bag.append(dialogue)
+        dialogue = ""
+
+
+    print("[INFO] stopping the extraction")
+    print("[INFO] start writing")
+    with open("generative_data4.txt", "w", encoding = "utf-8", errors="ignore") as fp:
+        for text in bag:
+            if text and not illegal in text:
                 fp.write(text + "\n")
             else:
                 continue
@@ -268,6 +315,43 @@ def write_empat():
 
         print("[INFO] stop writing")
 
+def write_daily_dialogues():
+    bag = []
+    #illegal = ""
+    dialogue = ""
+    ### the technique here is to combined all sentences of a dialogue
+    # into 1 string and adding start and end special tokens
+    print("[INFO] start extracting")
+    for sequence in daily_dial_dataset['train']['dialog']:
+        for text in sequence:
+            if len(sequence) > 1: # if it is a real dialogue
+                #sep token means it is the turn to speacker 2 to respond. Note that, before, it was the ponctuation that was limiting the AI
+                dialogue += str(text) + " [sep] "
+            else:
+                continue
+        
+        #dialogue = "<start> " + dialogue + "<end>"
+        dialogue = clean_seq(dialogue)
+        bag.append(dialogue)
+        dialogue = ""
+
+
+    print("[INFO] stopping the extraction")
+    print("[INFO] start writing")
+    with open("generative_data5.txt", "w", encoding = "utf-8", errors="ignore") as fp:
+        for text in bag:
+            if text: #and not illegal in text
+                fp.write(text[:-6] + "\n")
+            else:
+                continue
+        fp.close()
+
+        print("[INFO] stop writing")
+
+
+
+#Fit transform text
+
 def transform_text(text):
     text = tf.expand_dims(text, -1)
     pdoc = vectorize_layer_generative(text)
@@ -286,13 +370,13 @@ def load_generative(data_set):
 
     return vocab, text_ds
 
-def transform_autoenc(inp, out):
+def transform_autoenc(inp, out, con):
     inp, out = tf.expand_dims(inp, -1), tf.expand_dims(out, -1)
     enc, dec = vectorize_layer_autoenc(inp), vectorize_layer_autoenc(out)
     enc = enc[0]
     dec = tf.pad(dec[0], [[0, 1]])
     return (
-        {"encoder_inputs": enc, "decoder_inputs": dec[:-1]},
+        {"encoder_inputs": enc, "decoder_inputs": dec[:-1], "condition_inputs": con},
         {"output": dec[1:]},
         
     )
@@ -300,23 +384,87 @@ def transform_autoenc(inp, out):
 def load_autoenc_vectorizer():
     x_data_set = []
     y_data_set = []
-    with open("autoenc_data3.txt", "r", encoding = "utf-8", errors="ignore") as file:
+
+    x_condition = []
+    y_condition = []
+    with open("deltatest/data/generative_data5.txt", "r", encoding = "utf-8", errors="ignore") as file:
         lines = file.readlines()
 
-    count_line = 0
+    max_line = 0
     for line in lines:
-        if (count_line % 2) == 0 or count_line == 0:
-            x_data_set.append(str(line))
+        line = line.replace(" â€™ ", " ' ")
+        conv = line.split("[sep]")
+        if (len(conv) % 2) == 0: # if conversation is even on both size (every iteration as a response)
+            count_line = 0
+            for text in conv: # iterate over all the text 
+                if (count_line % 2) == 0 or count_line == 0: # since each even number a odd number following, separate the text in iteration | response
+                    x_data_set.append(str(text))
+                else:
+                    y_data_set.append(str(text))
+                count_line += 1
+
+        else: 
+            conv = conv[:-1] # if not even, remove the last iteration.
+            count_line = 0
+            for text in conv: # iterate over all the text 
+                if (count_line % 2) == 0 or count_line == 0: # since each even number a odd number following, separate the text in iteration | response
+                    x_data_set.append(str(text))
+                else:
+                    y_data_set.append(str(text))
+                count_line += 1
+
+        if max_line == 300: # top a 300 conversations
+            break
 
         else:
-            y_data_set.append(str(line))
+            max_line+=1
+        
 
-        count_line += 1
+    print(len(x_data_set))
+    print(len(y_data_set))
 
-    print(x_data_set[0])
-    print(y_data_set[0])
 
-    dataset = tf.data.Dataset.from_tensor_slices((x_data_set, y_data_set))
+    with open("deltatest/data/emotion.txt", "r", encoding = "utf-8", errors="ignore") as file:
+        condition_lines = file.readlines()
+    
+    max_line = 0
+    for line in condition_lines:
+        condition_list = line.split(" ") #get all condition for 
+        condition_list = condition_list[:-1] #remove "\n"
+        
+        if (len(condition_list) % 2) == 0:
+            count_line = 0
+            for condition in condition_list: 
+                if (count_line % 2) == 0 or count_line == 0: # since each even number a odd number following, separate the text in iteration | response
+                    x_condition.append(int(condition))
+                else:
+                    y_condition.append(int(condition))
+
+                count_line += 1
+
+        else: 
+            condition_list = condition_list[:-1] # if not even, remove the last iteration.
+            count_line = 0
+            for condition in condition_list: # iterate over all the text 
+                if (count_line % 2) == 0 or count_line == 0: # since each even number a odd number following, separate the text in iteration | response
+                    x_condition.append(int(condition))
+                else:
+                    y_condition.append(int(condition))
+                count_line += 1
+
+        if max_line == 300: # top a 300 conversations
+            break
+
+        else:
+            max_line+=1
+
+
+    print(y_condition[0])
+    print(len(y_condition))
+
+
+
+    dataset = tf.data.Dataset.from_tensor_slices((x_data_set, y_data_set, y_condition))
 
     vectorize_layer_autoenc.adapt(tf.data.Dataset.from_tensor_slices((x_data_set + y_data_set)).batch(128)) #batch_size
     
@@ -374,12 +522,20 @@ def load_autoenc_tokenizer():
 
 
 if __name__ == '__main__':
-    #write_conv_ai()
+    #write_daily_dialogues()
+    #write_conv_ai_gen4()
     #time.sleep(5)
     #write_empat()
     ### need to put [BOTStart], [HUMANStart] and [END] token
     #write_conv_ai_autoenc()
     
+    filename = ["generative_data5.txt"]
+    text_ds = tf.data.TextLineDataset(filename)
+    text_ds = text_ds.shuffle(buffer_size=256)
+    text_ds = text_ds.batch(128)
+    vocab, text_ds = load_generative(text_ds)
+    print("vocab [7] " + str(vocab[:20]))
+    '''
     train_ds, doodoo = load_autoenc_vectorizer()
     for inputs, targets in train_ds.take(1):
         print(f'inputs["encoder_inputs"].shape: {inputs["encoder_inputs"].shape}')
@@ -388,6 +544,7 @@ if __name__ == '__main__':
 
     vocab = vectorize_layer_autoenc.get_vocabulary()
     print(len(vocab))
+    '''
 
 
     #filename = ["data/generative_data3.txt", "data/empathetic_dialogues.txt"]

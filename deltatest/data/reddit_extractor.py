@@ -55,7 +55,7 @@ for comment in post.comments.list():
             count_conv = 0
             for conversation in text["conv"]:
                 if conversation["id"] == str(comment.parent_id).replace("t1_", ""):
-                    if len(conversation) == 2:
+                    if len(conversation) == 2: # allow two row of comments
                         text["conv"][count_conv]["response"] = str(comment.body)
                     break
                 count_conv+=1

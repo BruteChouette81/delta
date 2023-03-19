@@ -1,0 +1,13 @@
+1st model: 
+sequence to sequence using classic lstm, but with a bi-input
+goal: be train on understanding a certain context and be condition on these context
+example: condition on a certain type of people or on a task 
+
+2nd model: 
+encoder decoder using transformer 
+using the decoder to condition the output dense neuron 
+
+
+
+
+learn to interact with internet + model sentences using outside info (using condition)

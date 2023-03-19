@@ -1,14 +1,21 @@
-import time
+#import time
 import tensorflow as tf
 
 from tensorflow.keras import layers
-from tensorflow.keras.layers import Dense
+#from tensorflow.keras.layers import Dense
 from tensorflow import keras
-from tensorflow.keras.models import Model
+#from tensorflow.keras.models import Model
 
 import numpy as np
 
-from data.manage_data import load_generative
+import sys        
+ 
+# appending the directory of mod.py
+# in the sys.path list 
+
+sys.path.insert(1, "C:/Users/Utilisateur/Desktop/delta/deltatest/data")
+
+import manage_data
 
 
 
@@ -55,7 +62,7 @@ maxlen = 80  # Max sequence size
 embed_dim = 64  # Embedding size for each token
 num_heads = 4  # Number of attention heads
 feed_forward_dim = 256  # Hidden layer size in feed forward network inside transformer
-batch_size = 128
+batch_size = 64
 
 callbacks = []
 
@@ -129,20 +136,20 @@ class TextGenerator(keras.callbacks.Callback):
         callbacks.append(txt)
 
 def train(epochs):
-    filename = ["data/generative_data3.txt", "data/empathetic_dialogues.txt"]
+    filename = ["deltatest/data/generative_data5.txt"] #"../../data/empathetic_dialogues.txt"
     text_ds = tf.data.TextLineDataset(filename)
     text_ds = text_ds.shuffle(buffer_size=256)
     text_ds = text_ds.batch(batch_size)
-    vocab, text_ds = load_generative(text_ds)
+    vocab, text_ds = manage_data.load_generative(text_ds)
 
     word_to_index = {}
     for index, word in enumerate(vocab):
         word_to_index[word] = index # dict of {"WordAsStr": IndexOfWord}
 
     max_token = 80
-    #prompt = "start hey"
-    special_tokens = ["<start", "<end"]
-    start_tokens = [8, 4, 365, 16, 65, 23, 82, 66, 19] #[word_to_index.get(_, 1) for _ in prompt.split()]
+    prompt = "[start] hey ! sep "
+    special_tokens = ["[start]", "[end]"]#special_tokens = ["<start", "<end"]
+    start_tokens = [word_to_index.get(_, 1) for _ in prompt.split()] #start_tokens = [8, 4, 365, 16, 65, 23, 82, 66, 19] #
     print(start_tokens)
 
     special_tokens_ids = [word_to_index.get(_, 1) for _ in special_tokens]
@@ -199,7 +206,7 @@ def test(model, maxlen, input, index_to_word):
 
 if __name__ == '__main__':
     
-    model, callbacks = train(5)
+    model, callbacks = train(1)
     #model.save('model4_10')
 
     #time.sleep(5)

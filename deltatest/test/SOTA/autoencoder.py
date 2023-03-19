@@ -1,6 +1,4 @@
 
-from lib2to3.pgen2.tokenize import tokenize
-from random import sample
 import tensorflow as tf
 
 from tensorflow.keras import layers
@@ -9,7 +7,7 @@ from tensorflow.keras.models import Model
 
 import numpy as np
 
-from data.manage_data import load_autoenc_tokenizer, load_autoenc_vectorizer
+from data.manage_data import load_autoenc_vectorizer
 
 
 INMAXLEN = 30
