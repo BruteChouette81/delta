@@ -1,7 +1,29 @@
 Goal: create an AI based on Delta research to focus on replcating human conversation and impersonation of different personality
 
+multi-Modality attention and connection to the real world through oracles
+
+modify the consitionnal decoding based on the goal of the conversation
+
 model architechture: 
     as the Delta research has prooved, the more "human information" you have, the easier it is to replicate certain personnalities. Based on those 
     research, the Crystal AI will be a transformer autoencoder that focuses on 3 feeds of modalities: text, emotions and context. A retrieval database will
     also be connected to the model as an intranet of centralized information to help coherence and truthfullness
+
+    If context is to much as a conditon. It must be included in the Encoder input prompt (like gpt)
+
+
+Data architecture: 
+    3 modalities dataset must be created => 
+
+    encoder: text, token by token         encoder: emotion signal         or conditionnal encoder w/ emotion attention
+
+                        concat
+                          |
+                          |
+                          |
+    
+    decoder: conditional decoding w/ emotion signal to decode text: must learn pattern between emotions and text
+    and context which is the historic of a person that allows to make better and more personal chat
+
+    Important: must support masks and validation
 
