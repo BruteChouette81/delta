@@ -2,11 +2,18 @@
 MIT License
 Copyright (c) 2023 Thomas Berthiaume
 '''
+
+import os
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
+from data.getData import load_crystal_vectorizer
+
 #from data.manage_data import load_autoenc_vectorizer
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 
 starting_prompt = """
    ____                _        _  __     ___ 
@@ -154,6 +161,10 @@ class DeltaDecoderBlock(layers.Layer):
 
         ### attention layer 2: EMOTION SIGNAL
         conditionnal_tv = layers.concatenate(inputs=[encoder_outputs, emotion_emb])
+        print(conditionnal_tv.shape)
+        print(encoder_outputs.shape)
+        print(inputs.shape)
+        print(out_1.shape)
         attention_output_2 = self.attention_2(
             query=out_1,
             value=conditionnal_tv,
@@ -199,23 +210,28 @@ def model1(): #decode base on condition
     encoder_outputs = EncoderTransformerBlock(embed_dim, latent_dim, num_heads)(x)
     #encoder = keras.Model(encoder_inputs, encoder_outputs)
 
-    decoder_inputs = keras.Input(shape=(None,), dtype="int32", name="decoder_inputs")
+    decoder_inputs = keras.Input(shape=(MAXLEN,), dtype="int32", name="decoder_inputs")
     encoded_seq_inputs = keras.Input(shape=(None, embed_dim), name="decoder_state_inputs")
-    emotion_inputs = keras.Input(shape=(None, embed_dim), name="emotion_inputs")
-    condition_inputs = keras.Input(shape=(None, embed_dim), name="condition_inputs")
+    emotion_inputs = keras.Input(shape=(None,), name="emotion_inputs")
+    condition_inputs = keras.Input(shape=(MAXLEN,), name="condition_inputs")
     
     x = TokenAndPositionEmbeddingModel3(MAXLEN, VOCAB, embed_dim)(decoder_inputs)
-    #condition_emb = TokenAndPositionEmbeddingModel3(MAXLEN, VOCAB, embed_dim)(condition_inputs)
-    #emotion_emb = TokenAndPositionEmbeddingModel3(MAXLEN, VOCAB, embed_dim)(emotion_inputs)
+    #encoded_embed = TokenAndPositionEmbeddingModel3(MAXLEN, VOCAB, embed_dim)(encoded_seq_inputs)
+    condition_emb = TokenAndPositionEmbeddingModel3(MAXLEN, VOCAB, embed_dim)(condition_inputs) # 1, 6
+    
+    emotion_emb = layers.Embedding(6, 64, input_length=1)(emotion_inputs)
+    
+
+    print(emotion_emb.shape)
     #x = DecoderTransformerBlock(embed_dim, latent_dim, num_heads)(x, encoded_seq_inputs)
-    x = DeltaDecoderBlock(embed_dim, latent_dim, num_heads)(x, encoded_seq_inputs, emotion_inputs, condition_inputs) #emotion_emb, condition_emb
+    x = DeltaDecoderBlock(embed_dim, latent_dim, num_heads)(x, encoded_seq_inputs, emotion_emb, condition_emb) #emotion_emb, condition_emb
     x = layers.Dropout(0.5)(x)
     decoder_outputs = layers.Dense(VOCAB, activation="softmax")(x)
     decoder = keras.Model([decoder_inputs, encoded_seq_inputs, emotion_inputs, condition_inputs], decoder_outputs, name="output")
 
-    decoder_outputs = decoder([decoder_inputs, encoder_outputs, condition_inputs])
+    decoder_outputs = decoder([decoder_inputs, encoder_outputs, emotion_inputs, condition_inputs])
     transformer = keras.Model(
-        [encoder_inputs, decoder_inputs, emotion_inputs, condition_inputs], decoder_outputs, name="Crystal - model1"
+        [encoder_inputs, decoder_inputs, emotion_inputs, condition_inputs], decoder_outputs, name="crystalModel1"
     )
     return transformer
 
@@ -251,6 +267,11 @@ def train():
     model = model1()
     print(model.summary())
     model.compile("adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    
-    #auto_enc.fit(train_dataset, epochs=20) 
+    dataset, vectorizer = load_crystal_vectorizer()
+    model.fit(dataset, epochs=20)
     #save_model(auto_enc, "./crystalModel1")
+
+
+if __name__ == '__main__':
+    print(starting_prompt)
+    train()

@@ -34,11 +34,11 @@ vectorize_layer_autoenc = TextVectorization(
 
 def transform_autoenc(inp, out, emo, con): ### add emotion support
     inp, out = tf.expand_dims(inp, -1), tf.expand_dims(out, -1)
-    enc, dec = vectorize_layer_autoenc(inp), vectorize_layer_autoenc(out)
+    enc, dec, cdn = vectorize_layer_autoenc(inp), vectorize_layer_autoenc(out), vectorize_layer_autoenc(con)
     enc = enc[0]
     dec = tf.pad(dec[0], [[0, 1]])
     return (
-        {"encoder_inputs": enc, "decoder_inputs": dec[:-1], "emotion_inputs": emo, "condition_inputs": con},
+        {"encoder_inputs": enc, "decoder_inputs": dec[:-1], "emotion_inputs": emo, "condition_inputs": cdn},
         {"output": dec[1:]},
         
     )
@@ -65,9 +65,16 @@ def load_crystal_vectorizer():
         if (len(conv) % 2) == 0: # if conversation is even on both size (every iteration as a response)
             count_line = 0
             for text in conv: # iterate over all the text 
-                x_context_set[count_line] = x_context[count_line - 1] + text #keep track of the conversation history
+                
                 if (count_line % 2) == 0 or count_line == 0: # since each even number a odd number following, separate the text in iteration | response
                     x_data_set.append(str(text))
+
+                    #only context for x_data
+                
+                    if len(x_context_set) > 0:
+                        x_context_set.append(x_context_set[(int(count_line/2) - 1)] + text)
+                    else:
+                        x_context_set.append("") #empty context to start
                 else:
                     y_data_set.append(str(text))
                 count_line += 1
@@ -76,22 +83,32 @@ def load_crystal_vectorizer():
             conv = conv[:-1] # if not even, remove the last iteration.
             count_line = 0
             for text in conv: # iterate over all the text 
-                x_context_set[count_line] = x_context[count_line - 1] + text #keep track of the conversation history
+
                 if (count_line % 2) == 0 or count_line == 0: # since each even number a odd number following, separate the text in iteration | response
                     x_data_set.append(str(text))
+
+                    #only context for x_data
+                    if len(x_context_set) > 0:
+                        x_context_set.append(x_context_set[(int(count_line/2) - 1)] + text)
+                    else:
+                        x_context_set.append("") #empty context to start
                 else:
                     y_data_set.append(str(text))
                 count_line += 1
 
-        if max_line == 300: # top a 300 conversations
-            x_context.append(x_context_set) #.toString()
+        if max_line == 300: # top a 300 conversations 300
+            for i in x_context_set:
+                x_context.append(i) #.toString()
+
             break
 
         else:
             max_line+=1
-            x_context.append(x_context_set) #.toString()
+            for i in x_context_set:
+                x_context.append(i) #.toString()
         
-
+    print(len(x_context))
+    print(x_context[4])
     print(len(x_data_set))
     print(len(y_data_set))
 
@@ -135,8 +152,7 @@ def load_crystal_vectorizer():
     print(len(y_condition))
 
 
-
-    dataset = tf.data.Dataset.from_tensor_slices((x_data_set, y_data_set, y_condition))
+    dataset = tf.data.Dataset.from_tensor_slices((x_data_set, y_data_set, y_condition, x_context))
 
     vectorize_layer_autoenc.adapt(tf.data.Dataset.from_tensor_slices((x_data_set + y_data_set)).batch(128)) #batch_size
     
@@ -149,3 +165,13 @@ def load_crystal_vectorizer():
     )
 
     return train_dataset, vectorize_layer_autoenc
+
+
+if __name__ == '__main__':
+    dataset, vectorizer = load_crystal_vectorizer()
+    for inputs, targets in dataset.take(1):
+        print(f'inputs["encoder_inputs"].shape: {inputs["encoder_inputs"].shape}')
+        print(f'inputs["decoder_inputs"].shape: {inputs["decoder_inputs"].shape}')
+        print(f'inputs["emotion_inputs"].shape: {inputs["emotion_inputs"].shape}')
+        print(f'inputs["condition_inputs"].shape: {inputs["condition_inputs"].shape}')
+        print(f"targets['output'].shape: {targets['output'].shape}")
