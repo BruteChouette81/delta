@@ -8,6 +8,7 @@
 
 import tensorflow as tf
 from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
+import numpy as np
 
 
 def preprocess_text(sentence):
@@ -125,9 +126,9 @@ def load_crystal_vectorizer():
             count_line = 0
             for condition in condition_list: 
                 if (count_line % 2) == 0 or count_line == 0: # since each even number a odd number following, separate the text in iteration | response
-                    x_condition.append(int(condition))
+                    x_condition.append(int(condition))  
                 else:
-                    y_condition.append(int(condition))
+                    y_condition.append([int(condition)] * 30) 
 
                 count_line += 1
 
@@ -138,7 +139,7 @@ def load_crystal_vectorizer():
                 if (count_line % 2) == 0 or count_line == 0: # since each even number a odd number following, separate the text in iteration | response
                     x_condition.append(int(condition))
                 else:
-                    y_condition.append(int(condition))
+                    y_condition.append([int(condition)] * 30)  
                 count_line += 1
 
         if max_line == 300: # top a 300 conversations
@@ -148,11 +149,11 @@ def load_crystal_vectorizer():
             max_line+=1
 
 
-    print(y_condition[0])
+    print(y_condition[6])
     print(len(y_condition))
 
 
-    dataset = tf.data.Dataset.from_tensor_slices((x_data_set, y_data_set, y_condition, x_context))
+    dataset = tf.data.Dataset.from_tensor_slices((x_data_set, y_data_set, np.array(y_condition), x_context))
 
     vectorize_layer_autoenc.adapt(tf.data.Dataset.from_tensor_slices((x_data_set + y_data_set)).batch(128)) #batch_size
     
@@ -169,6 +170,7 @@ def load_crystal_vectorizer():
 
 if __name__ == '__main__':
     dataset, vectorizer = load_crystal_vectorizer()
+    print(f"vocab: {vectorizer.vocabulary_size()}")
     for inputs, targets in dataset.take(1):
         print(f'inputs["encoder_inputs"].shape: {inputs["encoder_inputs"].shape}')
         print(f'inputs["decoder_inputs"].shape: {inputs["decoder_inputs"].shape}')
