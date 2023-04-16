@@ -4,13 +4,12 @@ Copyright (c) 2023 Thomas Berthiaume
 '''
 
 import os
-from tkinter.tix import MAX
-from unicodedata import name
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+import numpy as np
 
-from data.getData import load_crystal_vectorizer
+from data.getData import load_crystal_vectorizer, preprocess_text
 
 #from data.manage_data import load_autoenc_vectorizer
 
@@ -29,8 +28,8 @@ starting_prompt = """
 """
 
 MAXLEN = 30
-MAXVOCAB = 10000
-VOCAB = 3053 #7210
+MAXVOCAB = 40000
+VOCAB = 16081
 
 class EncoderTransformerBlock(layers.Layer):
     def __init__(self, embed_dim, ff_dim, num_heads):
@@ -200,7 +199,7 @@ class DeltaDecoderBlock(layers.Layer):
 
 embed_dim = 64
 num_heads = 4
-latent_dim = 256 
+latent_dim = 256
 
 
 def model1(): #decode base on condition
@@ -265,6 +264,13 @@ def model2(): #encode emotions
     )
     return transformer
 
+def save_model(model: keras.Model, path):
+    model.save_weights(str(path))
+
+def load_model(path):
+    load_auto_enc = model1()
+    load_auto_enc.load_weights(path)
+    return load_auto_enc
 
 def train():
     model = model1()
@@ -272,8 +278,75 @@ def train():
     model.compile("adam", loss='sparse_categorical_crossentropy', metrics=["accuracy"])
     dataset, vectorizer = load_crystal_vectorizer()
     model.fit(dataset, epochs=100)
-    #save_model(auto_enc, "./crystalModel1")
+    save_model(model, "./deltatest/weights/crystalModel1") # accuracy: 0.6413, loss: 0.8284, No gradient desapearing
 
+
+def predict(input_sentence, context):
+    model = load_model("./deltatest/weights/crystalModel1")
+    
+    dataset, vectorizer = load_crystal_vectorizer()
+    VOCAB = vectorizer.get_vocabulary()
+
+    #### ENCODING
+    # Mapping the input sentence to tokens and adding start and end tokens
+    input_sentence = tf.constant(preprocess_text(input_sentence)) # add "[start] + + [end]" or remove entire line
+    up_dim = tf.expand_dims(input_sentence, -1)
+    tokenized_input_sentence = vectorizer(
+        up_dim
+    )
+    tokenized_input_sentence = tokenized_input_sentence[0]
+
+    #emotion: 
+    tokenized_input_emotions = np.array([1] *30) #get the real emotion code for the encription
+
+    #context:
+
+    if context: 
+        start_context = context
+    else: 
+        start_context = [""]
+
+    tokenized_input_context = vectorizer(
+        start_context
+    )
+
+    #### DECODING
+    # Initializing the initial sentence consisting of only the start token.
+    tokenized_target_sentence = tf.expand_dims(VOCAB.index("[start]"), 0)
+    decoded_sentence = ""
+
+    for i in range(MAXLEN):
+        # Get the predictions
+        predictions = model.predict(
+            {
+                "encoder_inputs": tf.expand_dims(tokenized_input_sentence, 0), #remove expand dims
+                "emotion_inputs": tokenized_input_emotions,
+                "condition_inputs": tokenized_input_context,
+                "decoder_inputs": tf.expand_dims(
+                    tf.pad(
+                        tokenized_target_sentence,
+                        [[0, MAXLEN - tf.shape(tokenized_target_sentence)[0]]],
+                    ),
+                    0,
+                ),
+            }
+        )
+        # Calculating the token with maximum probability and getting the corresponding word
+        sampled_token_index = tf.argmax(predictions[0, i, :])
+        sampled_token = VOCAB[sampled_token_index.numpy()]
+        # If sampled token is the end token then stop generating and return the sentence
+        if tf.equal(sampled_token_index, VOCAB.index("[end]")):
+            break
+        decoded_sentence += sampled_token + " "
+        tokenized_target_sentence = tf.concat(
+            [tokenized_target_sentence, [sampled_token_index]], 0
+        )
+
+    return decoded_sentence
+
+
+#sentence = predict("Hello")
+#print(sentence)
 
 if __name__ == '__main__':
     print(starting_prompt)

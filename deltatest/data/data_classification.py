@@ -123,7 +123,7 @@ def load_dataset():
             conv = lines.split("[sep]")
             convs.append(conv)
 
-            if i == 300: 
+            if i == 10000: #10,000
                 break
             else:
                 i+=1
@@ -133,6 +133,7 @@ def load_dataset():
 
 
 if __name__ == '__main__':
+   
     #train()
     word_index, x_data, y_data, tokenizer = prepare_data()
     #pred = classify(["i am very happy to go to denmark"], tokeniser)
@@ -147,7 +148,7 @@ if __name__ == '__main__':
         #print(pred)  
         #print("Label detected: " + str(pred_labels))
 
-        with open("deltatest/data/emotion.txt", mode='a') as file:
+        with open("deltatest/data/emotion2.txt", mode='a') as file:
             labelstr = ''
             for label in pred_labels:
                 labelstr += str(label) + ' '
@@ -155,16 +156,18 @@ if __name__ == '__main__':
             file.write(labelstr)
             file.close()
 
-        '''
-        i = 0
-        for label in pred_labels:
-            if pred[i][label] > 0.8:
-                liveEmotion.append(emotionsList[label])
-            else: 
-                liveEmotion.append("neutral")
-            i+=1
+            '''
+                i = 0
+                for label in pred_labels:
+                    if pred[i][label] > 0.8:
+                        liveEmotion.append(emotionsList[label])
+                    else: 
+                        liveEmotion.append("neutral")
+                    i+=1
 
-        print(liveEmotion)
-        liveEmotion = []
-        '''
+                print(liveEmotion)
+                liveEmotion = []
+            '''
 
+    
+   

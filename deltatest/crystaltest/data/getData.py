@@ -23,7 +23,7 @@ def preprocess_text(sentence):
     sentence = tf.strings.join(["[start]", sentence, "[end]"], separator=" ")
     return sentence
 
-batch_size = 64 #change to 128
+batch_size = 128 #change to 128
 
 #encoder/decoder vectorize layers
 vectorize_layer_autoenc = TextVectorization(
@@ -97,7 +97,7 @@ def load_crystal_vectorizer():
                     y_data_set.append(str(text))
                 count_line += 1
 
-        if max_line == 300: # top a 300 conversations 300
+        if max_line == 10000: # top a 300 conversations 300
             for i in x_context_set:
                 x_context.append(i) #.toString()
 
@@ -114,7 +114,7 @@ def load_crystal_vectorizer():
     print(len(y_data_set))
 
 
-    with open("deltatest/data/emotion.txt", "r", encoding = "utf-8", errors="ignore") as file:
+    with open("deltatest/data/emotion2.txt", "r", encoding = "utf-8", errors="ignore") as file:
         condition_lines = file.readlines()
     
     max_line = 0
@@ -142,7 +142,7 @@ def load_crystal_vectorizer():
                     y_condition.append([int(condition)] * 30)  
                 count_line += 1
 
-        if max_line == 300: # top a 300 conversations
+        if max_line == 10000: # top a 300 conversations
             break
 
         else:

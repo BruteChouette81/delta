@@ -2,7 +2,7 @@ Goal: create an AI based on Delta research to focus on replcating human conversa
 
 multi-Modality attention and connection to the real world through oracles
 
-modify the consitionnal decoding based on the goal of the conversation
+modify the conditionnal decoding based on the goal of the conversation
 
 model architechture: 
     as the Delta research has prooved, the more "human information" you have, the easier it is to replicate certain personnalities. Based on those 
@@ -12,7 +12,7 @@ model architechture:
     If context is to much as a conditon. It must be included in the Encoder input prompt (like gpt)
 
 
-Data architecture: 
+Data architecture: DONE ✔️ 
     3 modalities dataset must be created => 
 
     encoder: text, token by token         encoder: emotion signal         or conditionnal encoder w/ emotion attention
@@ -25,5 +25,31 @@ Data architecture:
     decoder: conditional decoding w/ emotion signal to decode text: must learn pattern between emotions and text
     and context which is the historic of a person that allows to make better and more personal chat
 
-    Important: must support masks and validation
+    Important: must support masks and validation ==> see BERT model method
+    Important: must be fine tune to respect objectives (using policy optimization RL)
+
+
+functionning algo: 
+
+Connecting to a new site with general objectives ==> connect through web scrapper to people ==> simulate and learn from personality to fit with people ==> each iteration, generate new goals of things to get
+==> while the conversation is going, generate embedding to graphs things the agent learned (can be transmit to other agent for them to get a better understanding of a task (DELTANET))
+
+
+goal algo:
+
+
+app:
+
+
+List:
+- General conversation model pretraining
+- Emotion recognition model
+- embedding/connection model
+- custom token for web/goal
+- goal model (know what to do)
+- fine tuning (RL)
+- web scrapper
+- web interaction 
+- website
+- app to interact/give goal/get data from the models
 
