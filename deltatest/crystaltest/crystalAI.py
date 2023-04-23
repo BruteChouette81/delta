@@ -272,20 +272,25 @@ def load_model(path):
     load_auto_enc.load_weights(path)
     return load_auto_enc
 
-def train():
-    model = model1()
+def train(epochs: int, reload: bool):
+    if (reload):
+        model = load_model("./deltatest/crystaltest/weights/crystalModel2")
+
+    else: 
+        model = model1()
+
     print(model.summary())
     model.compile("adam", loss='sparse_categorical_crossentropy', metrics=["accuracy"])
     dataset, vectorizer = load_crystal_vectorizer()
-    model.fit(dataset, epochs=100)
-    save_model(model, "./deltatest/weights/crystalModel1") # accuracy: 0.6413, loss: 0.8284, No gradient desapearing
+    model.fit(dataset, batch_size=64, epochs=epochs)
+    save_model(model, "./deltatest/crystaltest/weights/crystalModel2") # epochs: 120 - loss: 0.7917 - accuracy: 0.6559, No gradient desapearing
 
 
 def predict(input_sentence, context):
-    model = load_model("./deltatest/weights/crystalModel1")
+    model = load_model("./deltatest/crystaltest/weights/crystalModel2")
     
     dataset, vectorizer = load_crystal_vectorizer()
-    VOCAB = vectorizer.get_vocabulary()
+    vocab_index = vectorizer.get_vocabulary()
 
     #### ENCODING
     # Mapping the input sentence to tokens and adding start and end tokens
@@ -312,7 +317,7 @@ def predict(input_sentence, context):
 
     #### DECODING
     # Initializing the initial sentence consisting of only the start token.
-    tokenized_target_sentence = tf.expand_dims(VOCAB.index("[start]"), 0)
+    tokenized_target_sentence = tf.expand_dims(vocab_index.index("[start]"), 0)
     decoded_sentence = ""
 
     for i in range(MAXLEN):
@@ -320,7 +325,7 @@ def predict(input_sentence, context):
         predictions = model.predict(
             {
                 "encoder_inputs": tf.expand_dims(tokenized_input_sentence, 0), #remove expand dims
-                "emotion_inputs": tokenized_input_emotions,
+                "emotion_inputs": tf.expand_dims(tokenized_input_emotions, 0),
                 "condition_inputs": tokenized_input_context,
                 "decoder_inputs": tf.expand_dims(
                     tf.pad(
@@ -333,9 +338,9 @@ def predict(input_sentence, context):
         )
         # Calculating the token with maximum probability and getting the corresponding word
         sampled_token_index = tf.argmax(predictions[0, i, :])
-        sampled_token = VOCAB[sampled_token_index.numpy()]
+        sampled_token = vocab_index[sampled_token_index.numpy()]
         # If sampled token is the end token then stop generating and return the sentence
-        if tf.equal(sampled_token_index, VOCAB.index("[end]")):
+        if tf.equal(sampled_token_index, vocab_index.index("[end]")):
             break
         decoded_sentence += sampled_token + " "
         tokenized_target_sentence = tf.concat(
@@ -344,10 +349,24 @@ def predict(input_sentence, context):
 
     return decoded_sentence
 
-
 #sentence = predict("Hello")
 #print(sentence)
 
 if __name__ == '__main__':
     print(starting_prompt)
-    train()
+    context = ""
+    #prompt = "hello , how are you ?"
+    chatting = True
+ 
+    while(chatting):
+        prompt = input("User> ")
+        #print("User: " + prompt + "\n")
+        if prompt == "exit":
+            chatting = False
+        else:
+            sentence = predict(prompt, [context]) # ["Hey ! hi ."]
+            print("Bot: " + sentence + "\n")
+            prompt = " " + prompt
+            context += prompt
+   
+    #train(20, True)

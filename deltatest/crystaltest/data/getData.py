@@ -6,9 +6,12 @@
 #   text: "what happened ?",
 #   emotion: "empathy" 
 
+import re
 import tensorflow as tf
 from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 import numpy as np
+from datasets import load_dataset
+from tqdm import tqdm
 
 
 def preprocess_text(sentence):
@@ -23,7 +26,7 @@ def preprocess_text(sentence):
     sentence = tf.strings.join(["[start]", sentence, "[end]"], separator=" ")
     return sentence
 
-batch_size = 128 #change to 128
+batch_size = 64 #change to 64
 
 #encoder/decoder vectorize layers
 vectorize_layer_autoenc = TextVectorization(
@@ -43,6 +46,50 @@ def transform_autoenc(inp, out, emo, con): ### add emotion support
         {"output": dec[1:]},
         
     )
+
+def clean_seq(inp: str):
+    inp = inp.lower()
+    inp = inp.replace("\n", " ")
+    inp = inp.replace("_comma_", ", ")
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                           "]+", flags=re.UNICODE)
+
+    clean_inp = emoji_pattern.sub(r'', inp)
+    return clean_inp
+
+
+#function to write first 20k conversation of 
+def write_new_dataset():
+    dataset = load_dataset("OpenAssistant/oasst1")
+    convs = [] # list of conversation as string
+    new_conv = ""
+
+    print("[INFO] start extracting")
+    for iteration in dataset['train']:
+        if iteration["parent_id"] == None: # starting a new conversation tree
+            new_conv = clean_seq(new_conv)
+            convs.append(new_conv)
+
+            new_conv = str(iteration["text"]) + " [sep] "
+        else: 
+            new_conv += str(iteration["text"]) + " [sep] "
+
+
+    print("[INFO] stopping the extraction")
+    print("[INFO] start writing")
+    with open("generative_data6.txt", "w", encoding = "utf-8", errors="ignore") as fp:
+        for text in tqdm(convs):
+            if text: #and not illegal in text
+                fp.write(text[:-6] + "\n")
+            else:
+                continue
+        fp.close()
+
+        print("[INFO] stop writing")
 
 def load_crystal_vectorizer():
     x_data_set = []
@@ -114,7 +161,7 @@ def load_crystal_vectorizer():
     print(len(y_data_set))
 
 
-    with open("deltatest/data/emotion2.txt", "r", encoding = "utf-8", errors="ignore") as file:
+    with open("deltatest/data/emotion3.txt", "r", encoding = "utf-8", errors="ignore") as file:
         condition_lines = file.readlines()
     
     max_line = 0
@@ -169,6 +216,7 @@ def load_crystal_vectorizer():
 
 
 if __name__ == '__main__':
+    '''
     dataset, vectorizer = load_crystal_vectorizer()
     print(f"vocab: {vectorizer.vocabulary_size()}")
     for inputs, targets in dataset.take(1):
@@ -177,3 +225,5 @@ if __name__ == '__main__':
         print(f'inputs["emotion_inputs"].shape: {inputs["emotion_inputs"].shape}')
         print(f'inputs["condition_inputs"].shape: {inputs["condition_inputs"].shape}')
         print(f"targets['output'].shape: {targets['output'].shape}")
+    '''
+    write_new_dataset()

@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 from tensorflow import keras
+from tensorflow.keras import layers
 from datasets import load_dataset
 from tensorflow.keras.preprocessing.text import Tokenizer
 
@@ -14,8 +15,44 @@ from tqdm import tqdm
 
 emotion_dataset = load_dataset("emotion") #tweet with emotion: sadness (0), joy (1), love (2), anger (3), fear (4), surprise (5).
 
-embedding_dim = 4
+embedding_dim = 64
 max_len = 20
+
+### Transformer cells
+class TransformerBlock(layers.Layer):
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
+        super().__init__()
+        self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
+        self.ffn = keras.Sequential(
+            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+        )
+        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.dropout1 = layers.Dropout(rate)
+        self.dropout2 = layers.Dropout(rate)
+
+    def call(self, inputs, training):
+        attn_output = self.att(inputs, inputs)
+        attn_output = self.dropout1(attn_output, training=training)
+        out1 = self.layernorm1(inputs + attn_output)
+        ffn_output = self.ffn(out1)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        return self.layernorm2(out1 + ffn_output)
+
+class TokenAndPositionEmbedding(layers.Layer):
+    def __init__(self, maxlen, vocab_size, embed_dim):
+        super().__init__()
+        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
+        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
+
+    def call(self, x):
+        maxlen = tf.shape(x)[-1]
+        positions = tf.range(start=0, limit=maxlen, delta=1)
+        positions = self.pos_emb(positions)
+        x = self.token_emb(x)
+        return x + positions
+
+
 
 def prepare_data():
     x_tokenizer = Tokenizer()
@@ -25,7 +62,7 @@ def prepare_data():
     count = 0
     for sequence in emotion_dataset['train']['text']:
         bag.append(sequence) #already clean
-        if count == 1500: #dont get overdata
+        if count == 10000: #dont get overdata
             break
         else: 
             count +=1
@@ -33,7 +70,7 @@ def prepare_data():
     count = 0
     for sequence in emotion_dataset['train']['label']:
         labels.append(sequence) #already clean
-        if count == 1500: #dont get overdata
+        if count == 10000: #dont get overdata
             break
         else: 
             count +=1
@@ -72,6 +109,21 @@ def model(word_index) :
     model.add(keras.layers.Dense(6, activation='softmax')) #num labels
     return model
 
+def transformerClassifier(word_index):
+    inputs = layers.Input(shape=(max_len,))
+    embedding_layer = TokenAndPositionEmbedding(max_len, word_index + 1, embedding_dim)
+    x = embedding_layer(inputs)
+    transformer_block = TransformerBlock(embedding_dim, 4, 128)
+    x = transformer_block(x)
+    x = layers.GlobalAveragePooling1D()(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.Dense(20, activation="relu")(x)
+    x = layers.Dropout(0.1)(x)
+    outputs = layers.Dense(6, activation="softmax")(x)
+
+    model = keras.Model(inputs=inputs, outputs=outputs)
+    return model
+
 def train():
     word_index, x_data, y_data, tokeniser = prepare_data()
 
@@ -81,13 +133,15 @@ def train():
     print(y_train.shape)
     
 
-    model1 = model(len(word_index))
+    #model1 = model(len(word_index))
+    model1 = transformerClassifier(len(word_index))
     model1.compile(optimizer='rmsprop', 
               loss='categorical_crossentropy', #change in the future
               metrics=['accuracy'])
 
-    model1.fit(x_train, y_train, epochs=60)
-    model1.save("categorical_model1")
+    print(model1.summary())
+    model1.fit(x_train, y_train, epochs=25, batch_size=64)
+    model1.save("categorical_model2")
 
 
 def test():
@@ -95,8 +149,7 @@ def test():
     print(model1.summary())
    
 
-def classify(sentences, tokenizer):
-    model = keras.models.load_model("./deltatest/data/categorical_model1")
+def classify(sentences, tokenizer, model):
     pred_labels = []
 
     word_indices = tokenizer.texts_to_sequences(sentences)
@@ -133,9 +186,10 @@ def load_dataset():
 
 
 if __name__ == '__main__':
-   
+    
     #train()
     word_index, x_data, y_data, tokenizer = prepare_data()
+    model_pred = keras.models.load_model("./deltatest/data/categorical_model2")
     #pred = classify(["i am very happy to go to denmark"], tokeniser)
     convs=load_dataset()
     #emotionsList = ["sadness", "joy", "love", "anger", "fear", "surprise"]
@@ -144,11 +198,11 @@ if __name__ == '__main__':
     
     for conv in  tqdm(convs): 
 
-        pred_labels, pred = classify(conv, tokenizer)  
+        pred_labels, pred = classify(conv, tokenizer, model_pred)  
         #print(pred)  
         #print("Label detected: " + str(pred_labels))
 
-        with open("deltatest/data/emotion2.txt", mode='a') as file:
+        with open("deltatest/data/emotion3.txt", mode='a') as file:
             labelstr = ''
             for label in pred_labels:
                 labelstr += str(label) + ' '
@@ -168,6 +222,5 @@ if __name__ == '__main__':
                 print(liveEmotion)
                 liveEmotion = []
             '''
-
     
    
